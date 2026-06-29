@@ -1,10 +1,9 @@
 import streamlit as st
 import os
 import json
-import datetime
 import pandas as pd
 import plotly.express as px
-import extra_streamlit_components as stx
+from streamlit_cookies_manager import CookieManager
 
 # 1. Page Configuration
 st.set_page_config(page_title="Daily To-Do", page_icon="✅", layout="wide")
@@ -42,41 +41,37 @@ div[data-testid="stExpander"] {
 """
 st.markdown(css, unsafe_allow_html=True)
 
-# 3. Cookies Manager Setup
-cookie_manager = stx.CookieManager()
+# 3. Robust Cookies Manager Setup
+# تم وضع كلمة سر لتشفير الكوكيز وحمايتها في متصفح المستخدم
+cookies = CookieManager(password="secure_todo_app_password_2026")
 
-# خطوة هامة جداً: الانتظار حتى يستجيب المتصفح ويرسل الكوكيز المخزنة بالكامل قبل بدء الكود
-cookies = cookie_manager.get_all()
-if cookies is None:
-    st.caption("جاري الاتصال بالمتصفح واستعادة المهام... 🔄")
-    st.stop() # إيقاف مؤقت ذكي يمنع تصفير البيانات عند الـ Refresh
+# هذا السطر هو الحل الجذري: يوقف التطبيق تماماً حتى يتأكد من استرجاع المهام
+if not cookies.ready():
+    st.info("جاري مزامنة المهام مع المتصفح... 🔄")
+    st.stop()
 
-# تهيئة الذاكرة السريعة (Session State)
+# تهيئة الذاكرة السريعة (Session State) واسترجاع البيانات
 if "todos" not in st.session_state:
     st.session_state.todos = []
     
-    # قراءة البيانات المحفوظة من الكوكيز بأمان
     saved_todos = cookies.get("local_todos")
     if saved_todos:
-        if isinstance(saved_todos, str):
-            try:
-                st.session_state.todos = json.loads(saved_todos)
-            except:
-                st.session_state.todos = []
-        else:
-            st.session_state.todos = saved_todos
+        try:
+            st.session_state.todos = json.loads(saved_todos)
+        except:
+            st.session_state.todos = []
             
-        # التأكد من وجود الخصائص الجديدة لجميع المهام القديمة منعاً للأخطاء
+        # التأكد من وجود الخصائص الجديدة
         for t in st.session_state.todos:
             if 'progress' not in t: t['progress'] = 100 if t.get('completed') else 0
             if 'notes' not in t: t['notes'] = ""
 
-# دالة حفظ المهام في الكوكيز بالمتصفح (تلقائية وفي الخلفية)
+# دالة الحفظ الذكية للمكتبة الجديدة
 def save_tasks():
-    expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
-    cookie_manager.set("local_todos", json.dumps(st.session_state.todos), expires_at=expire_date)
+    cookies["local_todos"] = json.dumps(st.session_state.todos)
+    cookies.save() # إجبار المتصفح على حفظ التعديلات فوراً
 
-# --- دوال التحكم الاحترافية عبر الـ Callbacks لمنع تعارض الحفظ والمزامنة ---
+# --- دوال التحكم (Callbacks) ---
 def toggle_task(index, key):
     is_checked = st.session_state[key]
     st.session_state.todos[index]['completed'] = is_checked
@@ -151,6 +146,7 @@ with st.form("add_todo_form", clear_on_submit=True):
             "id": str(time.time())
         })
         save_tasks()
+        st.rerun()
 
 st.divider()
 
@@ -189,7 +185,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم قائمة المهام المطور ---
+# --- قسم قائمة المهام ---
 if st.session_state.todos:
     for index, task in enumerate(st.session_state.todos): 
         col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
