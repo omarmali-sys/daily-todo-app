@@ -54,6 +54,15 @@ div[role="radiogroup"] {
     padding: 10px;
     border-radius: 10px;
 }
+/* تنسيق رؤوس الجدول الجديد */
+.table-header {
+    font-weight: bold;
+    color: #94a3b8 !important;
+    font-size: 0.95rem;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 15px;
+}
 </style>
 """
 st.markdown(css, unsafe_allow_html=True)
@@ -229,7 +238,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المنظمة ---
+# --- قسم الفلترة وقائمة المهام المنظمة (Data Grid Layout) 🎨 ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -256,6 +265,17 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
+        # 🆕 تصميم عناوين الجدول (Headers)
+        st.markdown("<div class='table-header'>", unsafe_allow_html=True)
+        h_col1, h_col2, h_col3, h_col4, h_col5 = st.columns([0.4, 3, 1.5, 1.5, 0.5])
+        with h_col1: st.markdown("Status")
+        with h_col2: st.markdown("Task Name")
+        with h_col3: st.markdown("Due Date")
+        with h_col4: st.markdown("Details")
+        with h_col5: st.markdown("Action")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # عرض المهام المطابقة للتصميم الجديد
         for task in filtered_todos: 
             t_id = task['id']
             idx = get_task_index(t_id)
@@ -263,36 +283,41 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
-            # 🆕 تم تقسيم السطر لـ 4 أعمدة بدلاً من 3 لوضع القائمة المنسدلة على اليمين
-            col_check, col_text, col_exp, col_del = st.columns([0.3, 3, 2, 0.4])
+            # 🆕 نفس تقسيم أعمدة العناوين تماماً لضمان المحاذاة (Alignment)
+            col_check, col_text, col_date, col_exp, col_del = st.columns([0.4, 3, 1.5, 1.5, 0.5])
             
             with col_check:
-                st.markdown("<br>", unsafe_allow_html=True) # لضبط المحاذاة الرأسية
+                st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
                 chk_val = st.checkbox("", value=task['completed'], key=chk_key)
                 if chk_val != task['completed']:
                     st.session_state.todos[idx]['completed'] = chk_val
                     st.session_state.todos[idx]['progress'] = 100 if chk_val else 0
                     st.session_state.needs_save = True
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
                     
             with col_text:
+                st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 if task['completed']: 
-                    st.markdown(f"<p class='completed-task' style='margin-bottom: 0px;'><b>{task['task']}</b></p>", unsafe_allow_html=True)
+                    st.markdown(f"<span class='completed-task'>{task['task']}</span>", unsafe_allow_html=True)
                 else: 
-                    st.markdown(f"<p style='margin-bottom: 0px;'><b>{task['task']}</b></p>", unsafe_allow_html=True)
+                    st.markdown(f"<span>{task['task']}</span>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
                 
+            # 🆕 عمود منفصل للتاريخ ليكون الجدول نظيفاً
+            with col_date:
+                st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 t_date = task.get('date', '')
                 if t_date < current_date_str and not task['completed']:
-                    st.markdown(f"<span style='color: #ef4444; font-size: 0.8rem;'>⚠️ Overdue: {t_date}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='color: #ef4444; font-size: 0.9rem;'>⚠️ {t_date}</span>", unsafe_allow_html=True)
                 elif t_date == current_date_str:
-                    st.markdown(f"<span style='color: #fbbf24; font-size: 0.8rem;'>📅 Today: {t_date}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='color: #fbbf24; font-size: 0.9rem;'>📅 Today</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<span style='color: #94a3b8; font-size: 0.8rem;'>📅 Due: {t_date}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='color: #94a3b8; font-size: 0.9rem;'>📅 {t_date}</span>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
             
-            # 🆕 القائمة المنسدلة أصبحت في عمود منفصل على يمين المهمة
             with col_exp:
                 with st.expander(f"📊 {task.get('progress', 0)}% | ✏️ Edit"):
-                    # المحتويات أصبحت مرتبة رأسياً لتبدو أنيقة في المساحة الجديدة
                     title_val = st.text_input("Name:", value=task['task'], key=f"edit_{t_id}")
                     if title_val != task['task']:
                         st.session_state.todos[idx]['task'] = title_val
@@ -316,11 +341,12 @@ if st.session_state.todos:
                         st.rerun()
 
             with col_del:
-                st.markdown("<br>", unsafe_allow_html=True) # لضبط المحاذاة الرأسية
-                if st.button("❌", key=f"del_{t_id}", help="Delete Task"):
+                st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
+                if st.button("❌", key=f"del_{t_id}"):
                     st.session_state.todos.pop(idx)
                     st.session_state.needs_save = True
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
     if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
