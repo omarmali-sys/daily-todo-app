@@ -48,7 +48,6 @@ div[data-testid="stExpander"] {
     display: inline-block;
     margin-left: 15px;
 }
-/* تنسيق الفلتر */
 div[role="radiogroup"] {
     justify-content: center;
     background-color: rgba(255,255,255,0.05);
@@ -66,7 +65,7 @@ if not cookies.ready():
     st.info("جاري مزامنة المهام مع المتصفح... 🔄")
     st.stop()
 
-# تهيئة الذاكرة السريعة (Session State)
+# تهيئة الذاكرة السريعة
 if "todos" not in st.session_state:
     st.session_state.todos = []
     st.session_state.needs_save = False
@@ -109,7 +108,7 @@ def flag_for_save():
 def get_task_index(task_id):
     return next((i for i, t in enumerate(st.session_state.todos) if t['id'] == task_id), -1)
 
-# --- دوال التحكم بالمهام عبر الـ Callbacks ---
+# --- دوال التحكم بالمهام (مع التزامن الذكي للواجهة) 🔧 ---
 def toggle_task(task_id, key):
     idx = get_task_index(task_id)
     if idx != -1:
@@ -117,8 +116,10 @@ def toggle_task(task_id, key):
         st.session_state.todos[idx]['completed'] = is_checked
         if is_checked:
             st.session_state.todos[idx]['progress'] = 100
+            st.session_state[f"prog_{task_id}"] = 100 # تزامن ذاكرة شريط السحب
         elif st.session_state.todos[idx]['progress'] == 100:
             st.session_state.todos[idx]['progress'] = 0
+            st.session_state[f"prog_{task_id}"] = 0 # تزامن ذاكرة شريط السحب
         flag_for_save()
 
 def update_title(task_id, key): 
@@ -136,8 +137,10 @@ def update_progress(task_id, key):
         st.session_state.todos[idx]['progress'] = new_prog
         if new_prog == 100:
             st.session_state.todos[idx]['completed'] = True
+            st.session_state[f"check_{task_id}"] = True # تزامن ذاكرة علامة الصح
         elif new_prog < 100 and st.session_state.todos[idx]['completed']:
             st.session_state.todos[idx]['completed'] = False
+            st.session_state[f"check_{task_id}"] = False # تزامن ذاكرة علامة الصح
         flag_for_save()
 
 def update_notes(task_id, key):
@@ -240,7 +243,6 @@ if st.session_state.todos:
             st.session_state.streak_data["last_date"] = today_str
             flag_for_save()
             
-        # 🆕 التعديل هنا: ننتظر حتى ينتهي أمر الحفظ (needs_save = False) قبل إطلاق البالونات
         if not st.session_state.celebrated and not st.session_state.get("needs_save", False):
             st.balloons()
             st.session_state.celebrated = True
@@ -274,7 +276,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة حسب التاريخ ---
+# --- قسم الفلترة ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -298,7 +300,6 @@ if st.session_state.todos:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- عرض قائمة المهام المفلترة ---
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
