@@ -129,7 +129,7 @@ st.divider()
 # نموذج إضافة مهمة جديدة
 with st.form("add_todo_form", clear_on_submit=True):
     col1, col2 = st.columns([4, 1])
-    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Review weekly BI report")
+    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Add your Task")
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("Add Task", use_container_width=True)
