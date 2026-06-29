@@ -3,7 +3,7 @@ import os
 import json
 import pandas as pd
 import plotly.express as px
-from streamlit_cookies_manager import EncryptedCookieManager # تم التعديل هنا 🔧
+from streamlit_cookies_manager import EncryptedCookieManager
 
 # 1. Page Configuration
 st.set_page_config(page_title="Daily To-Do", page_icon="✅", layout="wide")
@@ -42,16 +42,16 @@ div[data-testid="stExpander"] {
 st.markdown(css, unsafe_allow_html=True)
 
 # 3. Robust Cookies Manager Setup
-# تم التعديل هنا لاستخدام الأداة المشفرة 🔧
 cookies = EncryptedCookieManager(prefix="todo/", password="secure_todo_app_password_2026")
 
 if not cookies.ready():
     st.info("جاري مزامنة المهام مع المتصفح... 🔄")
     st.stop()
 
-# تهيئة الذاكرة السريعة (Session State) واسترجاع البيانات
+# تهيئة الذاكرة السريعة وإشارة الحفظ
 if "todos" not in st.session_state:
     st.session_state.todos = []
+    st.session_state.needs_save = False # 🆕 إشارة الحفظ
     
     saved_todos = cookies.get("local_todos")
     if saved_todos:
@@ -60,15 +60,14 @@ if "todos" not in st.session_state:
         except:
             st.session_state.todos = []
             
-        # التأكد من وجود الخصائص الجديدة
         for t in st.session_state.todos:
             if 'progress' not in t: t['progress'] = 100 if t.get('completed') else 0
             if 'notes' not in t: t['notes'] = ""
 
-# دالة الحفظ الذكية للمكتبة الجديدة
-def save_tasks():
+# دالة الحفظ الذكية (تقوم فقط بتجهيز البيانات وتفعيل إشارة الحفظ)
+def flag_for_save():
     cookies["local_todos"] = json.dumps(st.session_state.todos)
-    cookies.save() # إجبار المتصفح على حفظ التعديلات فوراً
+    st.session_state.needs_save = True
 
 # --- دوال التحكم (Callbacks) ---
 def toggle_task(index, key):
@@ -78,7 +77,7 @@ def toggle_task(index, key):
         st.session_state.todos[index]['progress'] = 100
     elif st.session_state.todos[index]['progress'] == 100:
         st.session_state.todos[index]['progress'] = 0
-    save_tasks()
+    flag_for_save()
 
 def update_progress(index, key):
     new_prog = st.session_state[key]
@@ -87,19 +86,19 @@ def update_progress(index, key):
         st.session_state.todos[index]['completed'] = True
     elif new_prog < 100 and st.session_state.todos[index]['completed']:
         st.session_state.todos[index]['completed'] = False
-    save_tasks()
+    flag_for_save()
 
 def update_notes(index, key):
     st.session_state.todos[index]['notes'] = st.session_state[key]
-    save_tasks()
+    flag_for_save()
 
 def delete_task(task_id):
     st.session_state.todos = [t for t in st.session_state.todos if t['id'] != task_id]
-    save_tasks()
+    flag_for_save()
 
 def clear_completed():
     st.session_state.todos = [t for t in st.session_state.todos if not t['completed']]
-    save_tasks()
+    flag_for_save()
 
 # ==========================================
 # 4. UI Sidebar Layout
@@ -144,7 +143,7 @@ with st.form("add_todo_form", clear_on_submit=True):
             "notes": "", 
             "id": str(time.time())
         })
-        save_tasks()
+        flag_for_save()
         st.rerun()
 
 st.divider()
@@ -242,3 +241,10 @@ if st.session_state.todos:
     if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
         st.button("🧹 Clear Completed Tasks", on_click=clear_completed)
+
+# ==========================================
+# 6. التنفيذ النهائي للحفظ (مرة واحدة فقط)
+# ==========================================
+if st.session_state.get("needs_save", False):
+    cookies.save()
+    st.session_state.needs_save = False
