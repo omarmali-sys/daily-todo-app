@@ -37,10 +37,9 @@ div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 """
 st.markdown(css, unsafe_allow_html=True)
 
-# 3. Cookies Manager Setup (لحفظ البيانات في متصفح المستخدم)
+# 3. Cookies Manager Setup
 cookie_manager = stx.CookieManager()
 
-# جلب المهام من متصفح المستخدم الحالي
 saved_todos = cookie_manager.get(cookie="local_todos")
 
 if saved_todos is None:
@@ -53,29 +52,16 @@ elif isinstance(saved_todos, str):
 else:
     todos = saved_todos
 
-# دالة لحفظ التحديثات في المتصفح
-def save_and_reload(current_todos):
-    # حفظ المهام لمدة 10 سنوات
+# دالة الحفظ الذكية (تنتظر قليلاً قبل التحديث لتسمح للمتصفح بالحفظ)
+def save_and_reload(current_todos, needs_rerun=False):
     expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
     cookie_manager.set("local_todos", json.dumps(current_todos), expires_at=expire_date)
-    st.rerun()
+    if needs_rerun:
+        time.sleep(0.3) # إعطاء المتصفح وقتاً لحفظ الكوكيز
+        st.rerun()
 
 # ==========================================
-# 4. UI Navigation & Layout
-# ==========================================
-
-with st.sidebar:
-    if os.path.exists("Logo.png"):
-        st.image("Logo.png", use_container_width=True)
-        st.markdown("---")
-        
-    st.title("📌 Main Menu")
-    st.info("Daily To-Do List is active. ✅")
-    st.markdown("---")
-    st.caption("© 2026 Pro Dashboard")
-
-# ==========================================
-# 5. Main Page Content
+# 4. Main Page Content
 # ==========================================
 
 header_col1, header_col2 = st.columns([5, 1])
@@ -86,6 +72,22 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
+# --- رفعنا نموذج الإضافة للأعلى لكي يعمل بسلاسة ---
+with st.form("add_todo_form", clear_on_submit=True):
+    col1, col2 = st.columns([4, 1])
+    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Review weekly BI report")
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("Add Task", use_container_width=True)
+        
+    if submitted and new_task.strip():
+        todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
+        # حفظ بدون Rerun لأن العناصر بالأسفل ستتحدث تلقائياً
+        save_and_reload(todos, needs_rerun=False) 
+
+st.divider()
+
+# --- قسم الإحصائيات والرسم البياني ---
 if todos:
     completed_count = sum(1 for task in todos if task['completed'])
     pending_count = len(todos) - completed_count
@@ -116,31 +118,20 @@ if todos:
         st.progress(progress, text=f"Task Completion: {completed_count}/{total_count} ({int(progress * 100)}%)")
         
 else:
-    st.info("Your task list is empty. Add a new task below to get started!")
+    st.info("Your task list is empty. Add a new task above to get started!")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-with st.form("add_todo_form", clear_on_submit=True):
-    col1, col2 = st.columns([4, 1])
-    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Review weekly BI report")
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        submitted = st.form_submit_button("Add Task", use_container_width=True)
-        
-    if submitted and new_task.strip():
-        todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
-        save_and_reload(todos)
-
-st.divider()
-
+# --- قسم قائمة المهام ---
 if todos:
-    for index, task in enumerate(todos):
+    # نستخدم نسخة من القائمة (list) لتجنب أخطاء الحذف أثناء العرض
+    for index, task in enumerate(list(todos)): 
         col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
         with col_check:
             is_checked = st.checkbox("", value=task['completed'], key=f"check_{task['id']}")
             if is_checked != task['completed']:
                 todos[index]['completed'] = is_checked
-                save_and_reload(todos)
+                save_and_reload(todos, needs_rerun=True)
         with col_text:
             if task['completed']: 
                 st.markdown(f"<p class='completed-task'>{task['task']}</p>", unsafe_allow_html=True)
@@ -149,10 +140,10 @@ if todos:
         with col_del:
             if st.button("❌", key=f"del_{task['id']}", help="Delete Task"):
                 todos.pop(index)
-                save_and_reload(todos)
+                save_and_reload(todos, needs_rerun=True)
                 
     if any(task['completed'] for task in todos):
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🧹 Clear Completed Tasks"):
             todos = [task for task in todos if not task['completed']]
-            save_and_reload(todos)
+            save_and_reload(todos, needs_rerun=True)
