@@ -38,11 +38,7 @@ div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 st.markdown(css, unsafe_allow_html=True)
 
 # 3. Cookies Manager Setup (لحفظ البيانات في متصفح المستخدم)
-@st.cache_resource
-def get_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_manager()
+cookie_manager = stx.CookieManager()
 
 # جلب المهام من متصفح المستخدم الحالي
 saved_todos = cookie_manager.get(cookie="local_todos")
