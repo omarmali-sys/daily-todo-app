@@ -64,16 +64,32 @@ div[role="radiogroup"] {
     margin-bottom: 15px;
 }
 
-/* 🆕 محاذاة دقيقة وموحدة (Flexbox Alignment) لمنع أي ارتعاش أو عدم تناسق */
+/* محاذاة دقيقة وموحدة (Flexbox Alignment) */
 div[data-testid="stCheckbox"] {
     display: flex;
     align-items: center;
     height: 40px;
 }
-/* 🆕 توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
+/* توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
 div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
     height: 40px !important;
     min-height: 40px !important;
+}
+
+/* 🆕 تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة وتلغي اللون الرمادي */
+div[data-baseweb="input"] {
+    background-color: rgba(0, 0, 0, 0.2) !important; /* لون أسود شفاف يندمج مع الخلفية */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
+}
+div[data-baseweb="input"]:hover {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+div[data-baseweb="input"]:focus-within {
+    border-color: #38bdf8 !important; /* إضاءة زرقاء عند الكتابة */
+}
+input::placeholder {
+    color: #64748b !important; /* لون هادئ للنص الإرشادي */
 }
 </style>
 """
@@ -316,7 +332,6 @@ if st.session_state.todos:
                     st.rerun()
                     
             with col_text:
-                # 🆕 استخدام حاوية بارتفاع ثابت (40px) وتوسيط رأسي ليوازي الأزرار تماماً
                 text_style = "text-decoration: line-through; color: #94a3b8;" if task['completed'] else ""
                 text_html = f"<div style='display: flex; align-items: center; height: 40px;'><span style='{text_style}'><b>{task['task']}</b></span></div>"
                 st.markdown(text_html, unsafe_allow_html=True)
@@ -342,7 +357,6 @@ if st.session_state.todos:
                     date_html = f"<span style='color: #fbbf24; font-size: 0.9rem;'>📅 Today</span>"
                 else:
                     date_html = f"<span style='color: #94a3b8; font-size: 0.9rem;'>📅 {t_date}</span>"
-                # 🆕 استخدام حاوية بارتفاع ثابت للتاريخ أيضاً
                 st.markdown(f"<div style='display: flex; align-items: center; height: 40px;'>{date_html}</div>", unsafe_allow_html=True)
             
             with col_exp:
