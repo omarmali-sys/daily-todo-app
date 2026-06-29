@@ -246,14 +246,23 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام ---
+# --- قسم الفلترة وقائمة المهام المطور 🆕 ---
 if st.session_state.todos:
+    # 🆕 إضافة الفلتر الجديد Custom Date
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
-        ["All Tasks 📋", "Today 📅", "Overdue ⚠️", "Upcoming ⏭️"], 
+        ["All Tasks 📋", "Today 📅", "Overdue ⚠️", "Upcoming ⏭️", "Custom Date 📆"], 
         horizontal=True
     )
     
+    custom_filter_date_str = None
+    if filter_option == "Custom Date 📆":
+        # عرض تقويم صغير وأنيق عند اختيار Custom Date
+        f_col1, f_col2 = st.columns([1.5, 4])
+        with f_col1:
+            custom_filter_date = st.date_input("🗓️ Select Date:", datetime.date.today())
+            custom_filter_date_str = custom_filter_date.isoformat()
+            
     filtered_todos = []
     current_date_str = datetime.date.today().isoformat()
     
@@ -266,6 +275,8 @@ if st.session_state.todos:
         elif filter_option == "Overdue ⚠️" and t_date < current_date_str and not task.get('completed'):
             filtered_todos.append(task)
         elif filter_option == "Upcoming ⏭️" and t_date > current_date_str:
+            filtered_todos.append(task)
+        elif filter_option == "Custom Date 📆" and t_date == custom_filter_date_str:
             filtered_todos.append(task)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -325,12 +336,10 @@ if st.session_state.todos:
                         st.session_state.needs_save = True
                         st.rerun()
                     
-                    # 🆕 خانة تعديل تاريخ الاستحقاق الجديدة مدمجة هنا بذكاء
                     parsed_date = datetime.date.fromisoformat(task.get('date', current_date_str))
                     new_date_val = st.date_input("Due Date:", value=parsed_date, key=f"edit_date_{t_id}")
                     if new_date_val.isoformat() != task.get('date', ''):
                         st.session_state.todos[idx]['date'] = new_date_val.isoformat()
-                        # إعادة فرز المهام بناءً على التعديل الجديد ليبقى الجدول مرتباً دائماً
                         try:
                             st.session_state.todos.sort(key=lambda x: x.get('date', ''))
                         except:
