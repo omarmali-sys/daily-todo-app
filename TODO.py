@@ -70,9 +70,51 @@ div[data-testid="stCheckbox"] {
     align-items: center;
     height: 40px;
     transform: translateY(-10px); 
+    --primary-color: #10b981 !important;
 }
 
-/* 🆕 الاختراق الجذري للمربع الأحمر ليصبح أخضر */
+div[data-testid="stCheckbox"] label input[type="checkbox"]:checked + div,
+div[data-testid="stCheckbox"] label input[aria-checked="true"] + div,
+div[data-testid="stCheckbox"] label input:checked + div > div {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+}
+
+/* 🆕 توحيد ارتفاع الأزرار وصناديق النصوص، وضبط صندوق الملاحظات ليدعم النزول تلقائياً */
+div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
+    height: 40px !important;
+    min-height: 40px !important;
+}
+
+/* 🆕 ضبط الارتفاع الافتراضي لصندوق الـ Text Area الجديد للملاحظات ليتطابق مع الصف */
+div[data-testid="stTextArea"] > div {
+    height: 40px !important;
+    min-height: 40px !important;
+}
+div[data-testid="stTextArea"] textarea {
+    height: 40px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    overflow-y: auto !important;
+}
+
+/* تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة */
+div[data-baseweb="input"], div[data-baseweb="textarea"] {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
+}
+div[data-baseweb="input"]:hover, div[data-baseweb="textarea"]:hover {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {
+    border-color: #10b981 !important;
+}
+input::placeholder, textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* الاختراق الجذري للمربع الأحمر ليصبح أخضر */
 div[data-baseweb="checkbox"] input:checked + div {
     background-color: #10b981 !important;
     border-color: #10b981 !important;
@@ -80,28 +122,6 @@ div[data-baseweb="checkbox"] input:checked + div {
 div[data-baseweb="checkbox"] input:checked + div svg {
     fill: white !important;
     color: white !important;
-}
-
-/* توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
-div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
-    height: 40px !important;
-    min-height: 40px !important;
-}
-
-/* تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة */
-div[data-baseweb="input"] {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 6px !important;
-}
-div[data-baseweb="input"]:hover {
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-div[data-baseweb="input"]:focus-within {
-    border-color: #10b981 !important;
-}
-input::placeholder {
-    color: #64748b !important;
 }
 </style>
 """
@@ -278,7 +298,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام ---
+# --- قسم الفلترة وقائمة المهام المنظمة ذات الـ 6 أعمدة ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -314,6 +334,7 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
+        # عناوين الجدول
         st.markdown("<div class='table-header'>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
         with h_col1: st.markdown("Status")
@@ -331,6 +352,7 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
+            # توزيع الأعمدة بشكل أنيق
             col_check, col_text, col_notes, col_date, col_exp, col_del = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
             
             with col_check:
@@ -346,8 +368,9 @@ if st.session_state.todos:
                 text_html = f"<div style='display: flex; align-items: center; height: 40px;'><span style='{text_style}'><b>{task['task']}</b></span></div>"
                 st.markdown(text_html, unsafe_allow_html=True)
                 
+            # 🆕 تم تحويل الحقل هنا إلى text_area ليدعم التفاف النص التلقائي والنزول لأسفل
             with col_notes:
-                notes_val = st.text_input(
+                notes_val = st.text_area(
                     "Notes", 
                     value=task.get('notes', ''), 
                     placeholder="📝 Add notes...", 
