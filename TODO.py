@@ -121,7 +121,7 @@ def toggle_task(task_id, key):
             st.session_state.todos[idx]['progress'] = 0
         flag_for_save()
 
-def update_title(task_id, key): # 🆕 دالة تحديث مسمى المهمة الجديدة
+def update_title(task_id, key): 
     idx = get_task_index(task_id)
     if idx != -1:
         new_val = st.session_state[key].strip()
@@ -240,7 +240,8 @@ if st.session_state.todos:
             st.session_state.streak_data["last_date"] = today_str
             flag_for_save()
             
-        if not st.session_state.celebrated:
+        # 🆕 التعديل هنا: ننتظر حتى ينتهي أمر الحفظ (needs_save = False) قبل إطلاق البالونات
+        if not st.session_state.celebrated and not st.session_state.get("needs_save", False):
             st.balloons()
             st.session_state.celebrated = True
     elif progress < 1.0:
@@ -336,9 +337,7 @@ if st.session_state.todos:
                     args=(task['id'],)
                 )
             
-            # القائمة المنسدلة المحدثة التي تحتوي على ميزة تعديل الاسم 🆕
             with st.expander(f"📊 Progress: {task.get('progress', 0)}% | ✏️ Edit & Notes"):
-                # إضافة خانة تعديل مسمى المهمة أعلى شريط الإنجاز والملاحظات 🆕
                 st.text_input(
                     "✏️ Edit Task Name:", 
                     value=task['task'], 
