@@ -3,7 +3,7 @@ import os
 import json
 import pandas as pd
 import plotly.express as px
-from streamlit_cookies_manager import CookieManager
+from streamlit_cookies_manager import EncryptedCookieManager # تم التعديل هنا 🔧
 
 # 1. Page Configuration
 st.set_page_config(page_title="Daily To-Do", page_icon="✅", layout="wide")
@@ -42,10 +42,9 @@ div[data-testid="stExpander"] {
 st.markdown(css, unsafe_allow_html=True)
 
 # 3. Robust Cookies Manager Setup
-# تم وضع كلمة سر لتشفير الكوكيز وحمايتها في متصفح المستخدم
-cookies = CookieManager(password="secure_todo_app_password_2026")
+# تم التعديل هنا لاستخدام الأداة المشفرة 🔧
+cookies = EncryptedCookieManager(prefix="todo/", password="secure_todo_app_password_2026")
 
-# هذا السطر هو الحل الجذري: يوقف التطبيق تماماً حتى يتأكد من استرجاع المهام
 if not cookies.ready():
     st.info("جاري مزامنة المهام مع المتصفح... 🔄")
     st.stop()
