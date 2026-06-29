@@ -37,28 +37,33 @@ div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 """
 st.markdown(css, unsafe_allow_html=True)
 
-# 3. Cookies Manager Setup
+# 3. Smart Cookies & Session State Setup
 cookie_manager = stx.CookieManager()
 
-saved_todos = cookie_manager.get(cookie="local_todos")
+# تهيئة الذاكرة السريعة
+if "todos" not in st.session_state:
+    st.session_state.todos = []
+    st.session_state.data_loaded = False
 
-if saved_todos is None:
-    todos = []
-elif isinstance(saved_todos, str):
-    try:
-        todos = json.loads(saved_todos)
-    except:
-        todos = []
-else:
-    todos = saved_todos
+# تحميل البيانات من المتصفح مرة واحدة فقط عند بداية الجلسة
+if not st.session_state.data_loaded:
+    saved_todos = cookie_manager.get(cookie="local_todos")
+    if saved_todos is not None:
+        if isinstance(saved_todos, str):
+            try:
+                st.session_state.todos = json.loads(saved_todos)
+            except:
+                st.session_state.todos = []
+        else:
+            st.session_state.todos = saved_todos
+        st.session_state.data_loaded = True
+    elif cookie_manager.get_all() is not None:
+        st.session_state.data_loaded = True
 
-# دالة الحفظ الذكية (تنتظر قليلاً قبل التحديث لتسمح للمتصفح بالحفظ)
-def save_and_reload(current_todos, needs_rerun=False):
+# دالة الحفظ الصامتة (تحفظ في المتصفح في الخلفية)
+def save_tasks():
     expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
-    cookie_manager.set("local_todos", json.dumps(current_todos), expires_at=expire_date)
-    if needs_rerun:
-        time.sleep(0.3) # إعطاء المتصفح وقتاً لحفظ الكوكيز
-        st.rerun()
+    cookie_manager.set("local_todos", json.dumps(st.session_state.todos), expires_at=expire_date)
 
 # ==========================================
 # 4. Main Page Content
@@ -72,7 +77,7 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
-# --- رفعنا نموذج الإضافة للأعلى لكي يعمل بسلاسة ---
+# --- نموذج إضافة مهمة ---
 with st.form("add_todo_form", clear_on_submit=True):
     col1, col2 = st.columns([4, 1])
     with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Review weekly BI report")
@@ -81,17 +86,18 @@ with st.form("add_todo_form", clear_on_submit=True):
         submitted = st.form_submit_button("Add Task", use_container_width=True)
         
     if submitted and new_task.strip():
-        todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
-        # حفظ بدون Rerun لأن العناصر بالأسفل ستتحدث تلقائياً
-        save_and_reload(todos, needs_rerun=False) 
+        # إضافة المهمة للذاكرة السريعة أولاً
+        st.session_state.todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
+        # ثم إرسال نسخة للمتصفح للحفظ
+        save_tasks()
 
 st.divider()
 
-# --- قسم الإحصائيات والرسم البياني ---
-if todos:
-    completed_count = sum(1 for task in todos if task['completed'])
-    pending_count = len(todos) - completed_count
-    total_count = len(todos)
+# --- قسم الإحصائيات ---
+if st.session_state.todos:
+    completed_count = sum(1 for task in st.session_state.todos if task['completed'])
+    pending_count = len(st.session_state.todos) - completed_count
+    total_count = len(st.session_state.todos)
     
     progress = completed_count / total_count if total_count > 0 else 0
 
@@ -123,15 +129,16 @@ else:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- قسم قائمة المهام ---
-if todos:
-    # نستخدم نسخة من القائمة (list) لتجنب أخطاء الحذف أثناء العرض
-    for index, task in enumerate(list(todos)): 
+if st.session_state.todos:
+    for index, task in enumerate(list(st.session_state.todos)): 
         col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
         with col_check:
             is_checked = st.checkbox("", value=task['completed'], key=f"check_{task['id']}")
             if is_checked != task['completed']:
-                todos[index]['completed'] = is_checked
-                save_and_reload(todos, needs_rerun=True)
+                st.session_state.todos[index]['completed'] = is_checked
+                save_tasks()
+                time.sleep(0.2)
+                st.rerun()
         with col_text:
             if task['completed']: 
                 st.markdown(f"<p class='completed-task'>{task['task']}</p>", unsafe_allow_html=True)
@@ -139,11 +146,15 @@ if todos:
                 st.markdown(f"<p>{task['task']}</p>", unsafe_allow_html=True)
         with col_del:
             if st.button("❌", key=f"del_{task['id']}", help="Delete Task"):
-                todos.pop(index)
-                save_and_reload(todos, needs_rerun=True)
+                st.session_state.todos.pop(index)
+                save_tasks()
+                time.sleep(0.2)
+                st.rerun()
                 
-    if any(task['completed'] for task in todos):
+    if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🧹 Clear Completed Tasks"):
-            todos = [task for task in todos if not task['completed']]
-            save_and_reload(todos, needs_rerun=True)
+            st.session_state.todos = [task for task in st.session_state.todos if not task['completed']]
+            save_tasks()
+            time.sleep(0.2)
+            st.rerun()
