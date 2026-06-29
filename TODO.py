@@ -9,9 +9,10 @@ from streamlit_cookies_manager import EncryptedCookieManager
 # 1. Page Configuration
 st.set_page_config(page_title="Daily To-Do", page_icon="✅", layout="wide")
 
-# 2. Custom CSS
+# 2. Custom CSS (Supports Dark & Light Mode dynamically)
 css = """
 <style>
+/* تدرج الخلفية المظلمة يعمل بشكل افتراضي */
 .stApp {
     background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #334155);
     background-size: 400% 400%;
@@ -22,16 +23,21 @@ css = """
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
+
+/* الألوان الافتراضية للوضع المظلم */
 h1, h2, h3, p, span { color: #f8fafc !important; }
 div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 [data-testid="stSidebar"] {
     background-color: rgba(15, 23, 42, 0.8) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* 🆕 تنسيق خط الشطب المطور (لونه أحمر وواضح جداً) */
 .completed-task {
-    text-decoration: line-through;
-    color: #94a3b8 !important;
+    text-decoration: line-through #ef4444 2px !important; /* خط أحمر بسمك 2 بكسل */
+    color: #94a3b8 !important; /* لون النص نفسه رمادي هادئ للمهمة المنتهية */
 }
+
 div[data-testid="stExpander"] {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
@@ -54,7 +60,6 @@ div[role="radiogroup"] {
     padding: 10px;
     border-radius: 10px;
 }
-/* تنسيق رؤوس الجدول */
 .table-header {
     font-weight: bold;
     color: #94a3b8 !important;
@@ -80,13 +85,11 @@ div[data-testid="stCheckbox"] label input:checked + div > div {
     border-color: #10b981 !important;
 }
 
-/* 🆕 توحيد ارتفاع الأزرار وصناديق النصوص، وضبط صندوق الملاحظات ليدعم النزول تلقائياً */
 div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
     height: 40px !important;
     min-height: 40px !important;
 }
 
-/* 🆕 ضبط الارتفاع الافتراضي لصندوق الـ Text Area الجديد للملاحظات ليتطابق مع الصف */
 div[data-testid="stTextArea"] > div {
     height: 40px !important;
     min-height: 40px !important;
@@ -114,7 +117,6 @@ input::placeholder, textarea::placeholder {
     color: #64748b !important;
 }
 
-/* الاختراق الجذري للمربع الأحمر ليصبح أخضر */
 div[data-baseweb="checkbox"] input:checked + div {
     background-color: #10b981 !important;
     border-color: #10b981 !important;
@@ -122,6 +124,32 @@ div[data-baseweb="checkbox"] input:checked + div {
 div[data-baseweb="checkbox"] input:checked + div svg {
     fill: white !important;
     color: white !important;
+}
+
+/* 🆕 دعم الـ Light Mode بشكل تلقائي لضمان تناسق ألوان النصوص وحالتها */
+@media (prefers-color-scheme: light) {
+    .stApp {
+        background: #f8fafc !important; /* خلفية فاتحة مريحة */
+    }
+    h1, h2, h3, p, span, label { 
+        color: #1e293b !important; /* تحويل النصوص للرمادي الداكن الفخم */
+    }
+    .table-header {
+        color: #64748b !important;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    div[data-baseweb="input"], div[data-baseweb="textarea"] {
+        background-color: #ffffff !important; /* حقول بيضاء في الوضع الفاتح */
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    }
+    div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {
+        color: #1e293b !important;
+    }
+    /* يظل خط الشطب أحمر وممتاز في الوضع الفاتح أيضاً */
+    .completed-task {
+        text-decoration: line-through #ef4444 2px !important;
+        color: #64748b !important;
+    }
 }
 </style>
 """
@@ -298,7 +326,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المنظمة ذات الـ 6 أعمدة ---
+# --- قسم الفلترة وقائمة المهام ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -364,11 +392,13 @@ if st.session_state.todos:
                     st.rerun()
                     
             with col_text:
-                text_style = "text-decoration: line-through; color: #94a3b8;" if task['completed'] else ""
-                text_html = f"<div style='display: flex; align-items: center; height: 40px;'><span style='{text_style}'><b>{task['task']}</b></span></div>"
+                # 🆕 تطبيق كود التمييز المطور باللون الأحمر لخط الشطب
+                if task['completed']:
+                    text_html = f"<div style='display: flex; align-items: center; height: 40px;'><span class='completed-task'><b>{task['task']}</b></span></div>"
+                else:
+                    text_html = f"<div style='display: flex; align-items: center; height: 40px;'><span><b>{task['task']}</b></span></div>"
                 st.markdown(text_html, unsafe_allow_html=True)
                 
-            # 🆕 تم تحويل الحقل هنا إلى text_area ليدعم التفاف النص التلقائي والنزول لأسفل
             with col_notes:
                 notes_val = st.text_area(
                     "Notes", 
