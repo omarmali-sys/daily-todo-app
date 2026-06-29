@@ -54,7 +54,7 @@ div[role="radiogroup"] {
     padding: 10px;
     border-radius: 10px;
 }
-/* تنسيق رؤوس الجدول الجديد */
+/* تنسيق رؤوس الجدول */
 .table-header {
     font-weight: bold;
     color: #94a3b8 !important;
@@ -238,7 +238,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المنظمة (Data Grid Layout) 🎨 ---
+# --- قسم الفلترة وقائمة المهام ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -265,7 +265,7 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
-        # 🆕 تصميم عناوين الجدول (Headers)
+        # عناوين الجدول
         st.markdown("<div class='table-header'>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3, h_col4, h_col5 = st.columns([0.4, 3, 1.5, 1.5, 0.5])
         with h_col1: st.markdown("Status")
@@ -275,7 +275,6 @@ if st.session_state.todos:
         with h_col5: st.markdown("Action")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # عرض المهام المطابقة للتصميم الجديد
         for task in filtered_todos: 
             t_id = task['id']
             idx = get_task_index(t_id)
@@ -283,7 +282,6 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
-            # 🆕 نفس تقسيم أعمدة العناوين تماماً لضمان المحاذاة (Alignment)
             col_check, col_text, col_date, col_exp, col_del = st.columns([0.4, 3, 1.5, 1.5, 0.5])
             
             with col_check:
@@ -304,7 +302,6 @@ if st.session_state.todos:
                     st.markdown(f"<span>{task['task']}</span>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
                 
-            # 🆕 عمود منفصل للتاريخ ليكون الجدول نظيفاً
             with col_date:
                 st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 t_date = task.get('date', '')
@@ -341,7 +338,8 @@ if st.session_state.todos:
                         st.rerun()
 
             with col_del:
-                st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
+                # 🆕 التعديل هنا: هامش سلبي لرفع الزر للأعلى ليحاذي القائمة تماماً
+                st.markdown("<div style='margin-top: -4px;'>", unsafe_allow_html=True)
                 if st.button("❌", key=f"del_{t_id}"):
                     st.session_state.todos.pop(idx)
                     st.session_state.needs_save = True
