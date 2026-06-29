@@ -64,11 +64,12 @@ div[role="radiogroup"] {
     margin-bottom: 15px;
 }
 
-/* محاذاة دقيقة وموحدة (Flexbox Alignment) */
+/* 🆕 محاذاة دقيقة وموحدة (Pixel Perfect Alignment) */
 div[data-testid="stCheckbox"] {
     display: flex;
     align-items: center;
     height: 40px;
+    transform: translateY(-5px); /* 👈 سحب المربع للأعلى قليلاً ليتوازى مع النص */
 }
 /* توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
 div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
@@ -76,9 +77,9 @@ div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
     min-height: 40px !important;
 }
 
-/* 🆕 تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة وتلغي اللون الرمادي */
+/* تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة وتلغي اللون الرمادي */
 div[data-baseweb="input"] {
-    background-color: rgba(0, 0, 0, 0.2) !important; /* لون أسود شفاف يندمج مع الخلفية */
+    background-color: rgba(0, 0, 0, 0.2) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 6px !important;
 }
@@ -86,10 +87,10 @@ div[data-baseweb="input"]:hover {
     border-color: rgba(255, 255, 255, 0.3) !important;
 }
 div[data-baseweb="input"]:focus-within {
-    border-color: #38bdf8 !important; /* إضاءة زرقاء عند الكتابة */
+    border-color: #38bdf8 !important;
 }
 input::placeholder {
-    color: #64748b !important; /* لون هادئ للنص الإرشادي */
+    color: #64748b !important;
 }
 </style>
 """
