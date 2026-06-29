@@ -1,5 +1,4 @@
 import streamlit as st
-import json
 import os
 import time
 import pandas as pd
@@ -37,19 +36,9 @@ div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 """
 st.markdown(css, unsafe_allow_html=True)
 
-# 3. Database Configurations
-TODO_FILE = "todo_list.json"
-
-# --- دوال المهام (TO-DO) ---
-def load_todos():
-    if os.path.exists(TODO_FILE):
-        with open(TODO_FILE, 'r', encoding='utf-8') as file:
-            return json.load(file)
-    return []
-
-def save_todos(todos_list):
-    with open(TODO_FILE, 'w', encoding='utf-8') as file:
-        json.dump(todos_list, file, ensure_ascii=False, indent=4)
+# 3. Session State for Local/Private Tasks
+if 'todos' not in st.session_state:
+    st.session_state.todos = []
 
 # ==========================================
 # 4. UI Navigation & Layout
@@ -77,14 +66,14 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
-todos = load_todos()
+# Load tasks from current user's session
+todos = st.session_state.todos
 
 if todos:
     completed_count = sum(1 for task in todos if task['completed'])
     pending_count = len(todos) - completed_count
     total_count = len(todos)
     
-    # تجنب القسمة على صفر
     progress = completed_count / total_count if total_count > 0 else 0
 
     df_pie = pd.DataFrame({
@@ -122,8 +111,7 @@ with st.form("add_todo_form", clear_on_submit=True):
         submitted = st.form_submit_button("Add Task", use_container_width=True)
         
     if submitted and new_task.strip():
-        todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
-        save_todos(todos)
+        st.session_state.todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
         st.rerun()
 
 st.divider()
@@ -134,8 +122,7 @@ if todos:
         with col_check:
             is_checked = st.checkbox("", value=task['completed'], key=f"check_{task['id']}")
             if is_checked != task['completed']:
-                todos[index]['completed'] = is_checked
-                save_todos(todos)
+                st.session_state.todos[index]['completed'] = is_checked
                 st.rerun()
         with col_text:
             if task['completed']: 
@@ -144,13 +131,11 @@ if todos:
                 st.markdown(f"<p>{task['task']}</p>", unsafe_allow_html=True)
         with col_del:
             if st.button("❌", key=f"del_{task['id']}", help="Delete Task"):
-                todos.pop(index)
-                save_todos(todos)
+                st.session_state.todos.pop(index)
                 st.rerun()
                 
     if any(task['completed'] for task in todos):
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🧹 Clear Completed Tasks"):
-            todos = [task for task in todos if not task['completed']]
-            save_todos(todos)
+            st.session_state.todos = [task for task in todos if not task['completed']]
             st.rerun()
