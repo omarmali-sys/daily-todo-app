@@ -162,22 +162,22 @@ with st.form("add_todo_form", clear_on_submit=True):
 
 st.divider()
 
-# --- قسم الإحصائيات المطور ذو الـ 3 حالات للتفاعل الفوري مع النسب 🆕 ---
+# --- قسم الإحصائيات (مطور ليحسب الأوزان الحقيقية للشارت) 🔧 ---
 if st.session_state.todos:
-    # تقسيم الحسابات بناءً على النسبة المئوية الدقيقة لتسمع في الشارت فوراً 🔧
-    completed_count = sum(1 for task in st.session_state.todos if task.get('progress', 0) == 100)
-    in_progress_count = sum(1 for task in st.session_state.todos if 0 < task.get('progress', 0) < 100)
-    pending_count = sum(1 for task in st.session_state.todos if task.get('progress', 0) == 0)
     total_count = len(st.session_state.todos)
+    total_possible_progress = total_count * 100 # إجمالي النقاط الممكنة
+
+    # حساب الأوزان الفعلية بدلاً من عدد المهام
+    completed_val = sum(100 for task in st.session_state.todos if task.get('progress', 0) == 100)
+    in_progress_val = sum(task.get('progress', 0) for task in st.session_state.todos if 0 < task.get('progress', 0) < 100)
+    # المتبقي هو ما ينقص للوصول للعلامة الكاملة (100%) لكل المهام
+    pending_val = total_possible_progress - completed_val - in_progress_val
     
-    # حساب النسبة الإجمالية بناءً على الأوزان الفعلية لجميع المهام
-    total_progress_sum = sum(task.get('progress', 0) for task in st.session_state.todos)
-    overall_progress = total_progress_sum / (total_count * 100) if total_count > 0 else 0
+    overall_progress = (completed_val + in_progress_val) / total_possible_progress if total_possible_progress > 0 else 0
 
     today_str = datetime.date.today().isoformat()
     yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
     
-    # احتساب السلسلة والبالونات عند اكتمال كل المهام 100%
     if overall_progress == 1.0 and total_count > 0:
         last_date = st.session_state.streak_data.get("last_date", "")
         streak = st.session_state.streak_data.get("streak", 0)
@@ -198,21 +198,20 @@ if st.session_state.todos:
     elif overall_progress < 1.0:
         st.session_state.celebrated = False
 
-    # تحديث بيانات الـ DataFrame لتشمل الحالة الجديدة "جاري العمل" 🔧
+    # تمرير الأوزان الفعلية للشارت الدائري
     df_pie = pd.DataFrame({
         "Status": ["Completed ✅", "In Progress ⚙️", "Pending ⏳"],
-        "Tasks": [completed_count, in_progress_count, pending_count]
+        "Value": [completed_val, in_progress_val, pending_val]
     })
 
-    # خريطة الألوان المحدثة
     color_map = {
-        "Completed ✅": "#10b981",   # الأخضر للمكتمل
-        "In Progress ⚙️": "#38bdf8", # الأزرق الفاتح لجاري العمل
-        "Pending ⏳": "#475569"      # الرمادي للمؤجل
+        "Completed ✅": "#10b981",
+        "In Progress ⚙️": "#38bdf8",
+        "Pending ⏳": "#475569"
     }
 
     fig = px.pie(
-        df_pie, values='Tasks', names='Status', hole=0.5,
+        df_pie, values='Value', names='Status', hole=0.5,
         color='Status', color_discrete_map=color_map
     )
     
@@ -226,7 +225,6 @@ if st.session_state.todos:
     with chart_col: st.plotly_chart(fig, use_container_width=True)
     with progress_col:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        # شريط التقدم أصبح يعبر الآن عن دقة النسب المئوية الكاملة للمهام
         st.progress(overall_progress, text=f"Overall Total Progress: {int(overall_progress * 100)}%")
         
 else:
@@ -234,7 +232,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المستقرة ---
+# --- قسم الفلترة وقائمة المهام ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
