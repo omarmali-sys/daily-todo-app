@@ -63,6 +63,16 @@ div[role="radiogroup"] {
     border-bottom: 1px solid rgba(255,255,255,0.1);
     margin-bottom: 15px;
 }
+
+/* 🆕 محاذاة دقيقة (Pixel Perfect) لعناصر الجدول */
+/* إنزال مربع الاختيار (الصح) ليتوازى مع النص */
+div[data-testid="column"]:nth-child(1) div[data-testid="stCheckbox"] {
+    transform: translateY(5px);
+}
+/* رفع زر الحذف ليتوازى تماماً مع القائمة المنسدلة */
+div[data-testid="column"]:nth-child(5) div[data-testid="stButton"] {
+    transform: translateY(-13px);
+}
 </style>
 """
 st.markdown(css, unsafe_allow_html=True)
@@ -238,7 +248,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام ---
+# --- قسم الفلترة وقائمة المهام المنظمة ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -285,33 +295,31 @@ if st.session_state.todos:
             col_check, col_text, col_date, col_exp, col_del = st.columns([0.4, 3, 1.5, 1.5, 0.5])
             
             with col_check:
-                st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
                 chk_val = st.checkbox("", value=task['completed'], key=chk_key)
                 if chk_val != task['completed']:
                     st.session_state.todos[idx]['completed'] = chk_val
                     st.session_state.todos[idx]['progress'] = 100 if chk_val else 0
                     st.session_state.needs_save = True
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
                     
             with col_text:
-                st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 if task['completed']: 
-                    st.markdown(f"<span class='completed-task'>{task['task']}</span>", unsafe_allow_html=True)
+                    text_html = f"<span class='completed-task'><b>{task['task']}</b></span>"
                 else: 
-                    st.markdown(f"<span>{task['task']}</span>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                    text_html = f"<span><b>{task['task']}</b></span>"
+                # دفع النص للأسفل ليتوسط المسافة
+                st.markdown(f"<div style='margin-top: 10px;'>{text_html}</div>", unsafe_allow_html=True)
                 
             with col_date:
-                st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 t_date = task.get('date', '')
                 if t_date < current_date_str and not task['completed']:
-                    st.markdown(f"<span style='color: #ef4444; font-size: 0.9rem;'>⚠️ {t_date}</span>", unsafe_allow_html=True)
+                    date_html = f"<span style='color: #ef4444; font-size: 0.9rem;'>⚠️ {t_date}</span>"
                 elif t_date == current_date_str:
-                    st.markdown(f"<span style='color: #fbbf24; font-size: 0.9rem;'>📅 Today</span>", unsafe_allow_html=True)
+                    date_html = f"<span style='color: #fbbf24; font-size: 0.9rem;'>📅 Today</span>"
                 else:
-                    st.markdown(f"<span style='color: #94a3b8; font-size: 0.9rem;'>📅 {t_date}</span>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                    date_html = f"<span style='color: #94a3b8; font-size: 0.9rem;'>📅 {t_date}</span>"
+                # دفع التاريخ للأسفل ليتوسط المسافة
+                st.markdown(f"<div style='margin-top: 10px;'>{date_html}</div>", unsafe_allow_html=True)
             
             with col_exp:
                 with st.expander(f"📊 {task.get('progress', 0)}% | ✏️ Edit"):
@@ -338,13 +346,10 @@ if st.session_state.todos:
                         st.rerun()
 
             with col_del:
-                # 🆕 التعديل هنا: هامش سلبي لرفع الزر للأعلى ليحاذي القائمة تماماً
-                st.markdown("<div style='margin-top: -4px;'>", unsafe_allow_html=True)
                 if st.button("❌", key=f"del_{t_id}"):
                     st.session_state.todos.pop(idx)
                     st.session_state.needs_save = True
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
 
     if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
