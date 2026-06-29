@@ -162,18 +162,16 @@ with st.form("add_todo_form", clear_on_submit=True):
 
 st.divider()
 
-# --- قسم الإحصائيات (مطور ليحسب الأوزان الحقيقية للشارت) 🔧 ---
+# --- قسم الإحصائيات (تعديل الشارت ليحتوي على حالتين فقط متطابقتين) 🔧 ---
 if st.session_state.todos:
     total_count = len(st.session_state.todos)
-    total_possible_progress = total_count * 100 # إجمالي النقاط الممكنة
+    total_possible_progress = total_count * 100 
 
-    # حساب الأوزان الفعلية بدلاً من عدد المهام
-    completed_val = sum(100 for task in st.session_state.todos if task.get('progress', 0) == 100)
-    in_progress_val = sum(task.get('progress', 0) for task in st.session_state.todos if 0 < task.get('progress', 0) < 100)
-    # المتبقي هو ما ينقص للوصول للعلامة الكاملة (100%) لكل المهام
-    pending_val = total_possible_progress - completed_val - in_progress_val
+    # حساب ما تم إنجازه فعلياً (اللون الأخضر) وما تبقى (اللون الرمادي)
+    completed_val = sum(task.get('progress', 0) for task in st.session_state.todos)
+    pending_val = total_possible_progress - completed_val
     
-    overall_progress = (completed_val + in_progress_val) / total_possible_progress if total_possible_progress > 0 else 0
+    overall_progress = completed_val / total_possible_progress if total_possible_progress > 0 else 0
 
     today_str = datetime.date.today().isoformat()
     yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -198,15 +196,14 @@ if st.session_state.todos:
     elif overall_progress < 1.0:
         st.session_state.celebrated = False
 
-    # تمرير الأوزان الفعلية للشارت الدائري
+    # تمرير الحالتين فقط للرسم البياني
     df_pie = pd.DataFrame({
-        "Status": ["Completed ✅", "In Progress ⚙️", "Pending ⏳"],
-        "Value": [completed_val, in_progress_val, pending_val]
+        "Status": ["Completed ✅", "Pending ⏳"],
+        "Value": [completed_val, pending_val]
     })
 
     color_map = {
         "Completed ✅": "#10b981",
-        "In Progress ⚙️": "#38bdf8",
         "Pending ⏳": "#475569"
     }
 
@@ -214,6 +211,9 @@ if st.session_state.todos:
         df_pie, values='Value', names='Status', hole=0.5,
         color='Status', color_discrete_map=color_map
     )
+    
+    # تحسين التلميح (Tooltip) ليظهر النسبة المئوية بشكل أنظف
+    fig.update_traces(hovertemplate='<b>%{label}</b><br>Ratio: %{percent}<extra></extra>')
     
     fig.update_layout(
         margin=dict(t=10, b=10, l=0, r=0), height=220,
