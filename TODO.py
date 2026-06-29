@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import time
 import json
 import datetime
 import pandas as pd
@@ -43,16 +42,22 @@ div[data-testid="stExpander"] {
 """
 st.markdown(css, unsafe_allow_html=True)
 
-# 3. Smart Cookies & Session State Setup
+# 3. Cookies Manager Setup
 cookie_manager = stx.CookieManager()
 
+# خطوة هامة جداً: الانتظار حتى يستجيب المتصفح ويرسل الكوكيز المخزنة بالكامل قبل بدء الكود
+cookies = cookie_manager.get_all()
+if cookies is None:
+    st.caption("جاري الاتصال بالمتصفح واستعادة المهام... 🔄")
+    st.stop() # إيقاف مؤقت ذكي يمنع تصفير البيانات عند الـ Refresh
+
+# تهيئة الذاكرة السريعة (Session State)
 if "todos" not in st.session_state:
     st.session_state.todos = []
-    st.session_state.data_loaded = False
-
-if not st.session_state.data_loaded:
-    saved_todos = cookie_manager.get(cookie="local_todos")
-    if saved_todos is not None:
+    
+    # قراءة البيانات المحفوظة من الكوكيز بأمان
+    saved_todos = cookies.get("local_todos")
+    if saved_todos:
         if isinstance(saved_todos, str):
             try:
                 st.session_state.todos = json.loads(saved_todos)
@@ -61,21 +66,63 @@ if not st.session_state.data_loaded:
         else:
             st.session_state.todos = saved_todos
             
-        # تحديث المهام القديمة لتشمل الخصائص الجديدة (الملاحظات والنسبة) حتى لا يحدث خطأ
+        # التأكد من وجود الخصائص الجديدة لجميع المهام القديمة منعاً للأخطاء
         for t in st.session_state.todos:
             if 'progress' not in t: t['progress'] = 100 if t.get('completed') else 0
             if 'notes' not in t: t['notes'] = ""
-            
-        st.session_state.data_loaded = True
-    elif cookie_manager.get_all() is not None:
-        st.session_state.data_loaded = True
 
+# دالة حفظ المهام في الكوكيز بالمتصفح (تلقائية وفي الخلفية)
 def save_tasks():
     expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
     cookie_manager.set("local_todos", json.dumps(st.session_state.todos), expires_at=expire_date)
 
+# --- دوال التحكم الاحترافية عبر الـ Callbacks لمنع تعارض الحفظ والمزامنة ---
+def toggle_task(index, key):
+    is_checked = st.session_state[key]
+    st.session_state.todos[index]['completed'] = is_checked
+    if is_checked:
+        st.session_state.todos[index]['progress'] = 100
+    elif st.session_state.todos[index]['progress'] == 100:
+        st.session_state.todos[index]['progress'] = 0
+    save_tasks()
+
+def update_progress(index, key):
+    new_prog = st.session_state[key]
+    st.session_state.todos[index]['progress'] = new_prog
+    if new_prog == 100:
+        st.session_state.todos[index]['completed'] = True
+    elif new_prog < 100 and st.session_state.todos[index]['completed']:
+        st.session_state.todos[index]['completed'] = False
+    save_tasks()
+
+def update_notes(index, key):
+    st.session_state.todos[index]['notes'] = st.session_state[key]
+    save_tasks()
+
+def delete_task(task_id):
+    st.session_state.todos = [t for t in st.session_state.todos if t['id'] != task_id]
+    save_tasks()
+
+def clear_completed():
+    st.session_state.todos = [t for t in st.session_state.todos if not t['completed']]
+    save_tasks()
+
 # ==========================================
-# 4. Main Page Content
+# 4. UI Sidebar Layout
+# ==========================================
+
+with st.sidebar:
+    if os.path.exists("Logo.png"):
+        st.image("Logo.png", use_container_width=True)
+        st.markdown("---")
+        
+    st.title("📌 Main Menu")
+    st.info("Daily To-Do List is active. ✅")
+    st.markdown("---")
+    st.caption("© 2026 Pro Dashboard")
+
+# ==========================================
+# 5. Main Page Content
 # ==========================================
 
 header_col1, header_col2 = st.columns([5, 1])
@@ -86,6 +133,7 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
+# نموذج إضافة مهمة جديدة
 with st.form("add_todo_form", clear_on_submit=True):
     col1, col2 = st.columns([4, 1])
     with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Review weekly BI report")
@@ -94,6 +142,7 @@ with st.form("add_todo_form", clear_on_submit=True):
         submitted = st.form_submit_button("Add Task", use_container_width=True)
         
     if submitted and new_task.strip():
+        import time
         st.session_state.todos.append({
             "task": new_task.strip(), 
             "completed": False, 
@@ -105,7 +154,7 @@ with st.form("add_todo_form", clear_on_submit=True):
 
 st.divider()
 
-# --- قسم الإحصائيات ---
+# --- قسم الإحصائيات والرسم البياني ---
 if st.session_state.todos:
     completed_count = sum(1 for task in st.session_state.todos if task['completed'])
     pending_count = len(st.session_state.todos) - completed_count
@@ -140,24 +189,19 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم قائمة المهام ---
+# --- قسم قائمة المهام المطور ---
 if st.session_state.todos:
-    for index, task in enumerate(list(st.session_state.todos)): 
+    for index, task in enumerate(st.session_state.todos): 
         col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
         
         with col_check:
-            is_checked = st.checkbox("", value=task['completed'], key=f"check_{task['id']}")
-            if is_checked != task['completed']:
-                st.session_state.todos[index]['completed'] = is_checked
-                # ربط علامة الصح بنسبة الإنجاز
-                if is_checked:
-                    st.session_state.todos[index]['progress'] = 100
-                elif st.session_state.todos[index]['progress'] == 100:
-                    st.session_state.todos[index]['progress'] = 0
-                
-                save_tasks()
-                time.sleep(0.2)
-                st.rerun()
+            st.checkbox(
+                "", 
+                value=task['completed'], 
+                key=f"check_{task['id']}", 
+                on_change=toggle_task, 
+                args=(index, f"check_{task['id']}")
+            )
                 
         with col_text:
             if task['completed']: 
@@ -166,45 +210,40 @@ if st.session_state.todos:
                 st.markdown(f"<p><b>{task['task']}</b></p>", unsafe_allow_html=True)
                 
         with col_del:
-            if st.button("❌", key=f"del_{task['id']}", help="Delete Task"):
-                st.session_state.todos.pop(index)
-                save_tasks()
-                time.sleep(0.2)
-                st.rerun()
+            st.button(
+                "❌", 
+                key=f"del_{task['id']}", 
+                help="Delete Task", 
+                on_click=delete_task, 
+                args=(task['id'],)
+            )
         
-        # --- القائمة المنسدلة للنسبة والملاحظات ---
+        # القائمة المنسدلة للنسبة والملاحظات لكل مهمة
         with st.expander(f"📊 Progress: {task.get('progress', 0)}% | 📝 Notes"):
             col_prog, col_notes = st.columns([1, 1.5])
             
             with col_prog:
-                new_prog = st.slider("Completion %", 0, 100, task.get('progress', 0), step=10, key=f"prog_{task['id']}")
+                st.slider(
+                    "Completion %", 
+                    0, 100, 
+                    task.get('progress', 0), 
+                    step=10, 
+                    key=f"prog_{task['id']}",
+                    on_change=update_progress,
+                    args=(index, f"prog_{task['id']}")
+                )
             
             with col_notes:
-                new_notes = st.text_area("Task Notes", task.get('notes', ''), height=68, placeholder="Add your notes here...", key=f"note_{task['id']}")
-            
-            # حفظ التغييرات تلقائياً عند تعديل النسبة أو كتابة ملاحظة
-            if new_prog != task.get('progress', 0) or new_notes != task.get('notes', ''):
-                st.session_state.todos[index]['progress'] = new_prog
-                st.session_state.todos[index]['notes'] = new_notes
-                
-                # ربط نسبة الإنجاز بعلامة الصح
-                if new_prog == 100 and not st.session_state.todos[index]['completed']:
-                    st.session_state.todos[index]['completed'] = True
-                    save_tasks()
-                    time.sleep(0.1)
-                    st.rerun()
-                elif new_prog < 100 and st.session_state.todos[index]['completed']:
-                    st.session_state.todos[index]['completed'] = False
-                    save_tasks()
-                    time.sleep(0.1)
-                    st.rerun()
-                else:
-                    save_tasks()
+                st.text_area(
+                    "Task Notes", 
+                    task.get('notes', ''), 
+                    height=68, 
+                    placeholder="Add your notes here...", 
+                    key=f"note_{task['id']}",
+                    on_change=update_notes,
+                    args=(index, f"note_{task['id']}")
+                )
 
     if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🧹 Clear Completed Tasks"):
-            st.session_state.todos = [task for task in st.session_state.todos if not task['completed']]
-            save_tasks()
-            time.sleep(0.2)
-            st.rerun()
+        st.button("🧹 Clear Completed Tasks", on_click=clear_completed)
