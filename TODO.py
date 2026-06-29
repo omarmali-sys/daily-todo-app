@@ -36,7 +36,7 @@ div[data-testid="stExpander"] {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 .streak-badge {
     background-color: rgba(255, 165, 0, 0.2);
@@ -162,12 +162,11 @@ with st.form("add_todo_form", clear_on_submit=True):
 
 st.divider()
 
-# --- قسم الإحصائيات (تعديل الشارت ليحتوي على حالتين فقط متطابقتين) 🔧 ---
+# --- قسم الإحصائيات والشارت ---
 if st.session_state.todos:
     total_count = len(st.session_state.todos)
     total_possible_progress = total_count * 100 
 
-    # حساب ما تم إنجازه فعلياً (اللون الأخضر) وما تبقى (اللون الرمادي)
     completed_val = sum(task.get('progress', 0) for task in st.session_state.todos)
     pending_val = total_possible_progress - completed_val
     
@@ -196,7 +195,6 @@ if st.session_state.todos:
     elif overall_progress < 1.0:
         st.session_state.celebrated = False
 
-    # تمرير الحالتين فقط للرسم البياني
     df_pie = pd.DataFrame({
         "Status": ["Completed ✅", "Pending ⏳"],
         "Value": [completed_val, pending_val]
@@ -212,7 +210,6 @@ if st.session_state.todos:
         color='Status', color_discrete_map=color_map
     )
     
-    # تحسين التلميح (Tooltip) ليظهر النسبة المئوية بشكل أنظف
     fig.update_traces(hovertemplate='<b>%{label}</b><br>Ratio: %{percent}<extra></extra>')
     
     fig.update_layout(
@@ -232,7 +229,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام ---
+# --- قسم الفلترة وقائمة المهام المنظمة ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -266,9 +263,11 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
-            col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
+            # 🆕 تم تقسيم السطر لـ 4 أعمدة بدلاً من 3 لوضع القائمة المنسدلة على اليمين
+            col_check, col_text, col_exp, col_del = st.columns([0.3, 3, 2, 0.4])
             
             with col_check:
+                st.markdown("<br>", unsafe_allow_html=True) # لضبط المحاذاة الرأسية
                 chk_val = st.checkbox("", value=task['completed'], key=chk_key)
                 if chk_val != task['completed']:
                     st.session_state.todos[idx]['completed'] = chk_val
@@ -278,9 +277,9 @@ if st.session_state.todos:
                     
             with col_text:
                 if task['completed']: 
-                    st.markdown(f"<p class='completed-task'><b>{task['task']}</b></p>", unsafe_allow_html=True)
+                    st.markdown(f"<p class='completed-task' style='margin-bottom: 0px;'><b>{task['task']}</b></p>", unsafe_allow_html=True)
                 else: 
-                    st.markdown(f"<p><b>{task['task']}</b></p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin-bottom: 0px;'><b>{task['task']}</b></p>", unsafe_allow_html=True)
                 
                 t_date = task.get('date', '')
                 if t_date < current_date_str and not task['completed']:
@@ -288,26 +287,19 @@ if st.session_state.todos:
                 elif t_date == current_date_str:
                     st.markdown(f"<span style='color: #fbbf24; font-size: 0.8rem;'>📅 Today: {t_date}</span>", unsafe_allow_html=True)
                 else:
-                    st.caption(f"📅 Due Date: {t_date}")
-                    
-            with col_del:
-                if st.button("❌", key=f"del_{t_id}", help="Delete Task"):
-                    st.session_state.todos.pop(idx)
-                    st.session_state.needs_save = True
-                    st.rerun()
+                    st.markdown(f"<span style='color: #94a3b8; font-size: 0.8rem;'>📅 Due: {t_date}</span>", unsafe_allow_html=True)
             
-            with st.expander(f"📊 Progress: {task.get('progress', 0)}% | ✏️ Edit & Notes"):
-                title_val = st.text_input("✏️ Edit Task Name:", value=task['task'], key=f"edit_{t_id}")
-                if title_val != task['task']:
-                    st.session_state.todos[idx]['task'] = title_val
-                    st.session_state.needs_save = True
-                    st.rerun()
-                
-                st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
-                
-                col_prog, col_notes = st.columns([1, 1.5])
-                with col_prog:
-                    sl_val = st.slider("Completion %", 0, 100, value=task.get('progress', 0), step=10, key=prog_key)
+            # 🆕 القائمة المنسدلة أصبحت في عمود منفصل على يمين المهمة
+            with col_exp:
+                with st.expander(f"📊 {task.get('progress', 0)}% | ✏️ Edit"):
+                    # المحتويات أصبحت مرتبة رأسياً لتبدو أنيقة في المساحة الجديدة
+                    title_val = st.text_input("Name:", value=task['task'], key=f"edit_{t_id}")
+                    if title_val != task['task']:
+                        st.session_state.todos[idx]['task'] = title_val
+                        st.session_state.needs_save = True
+                        st.rerun()
+                    
+                    sl_val = st.slider("Progress %", 0, 100, value=task.get('progress', 0), step=10, key=prog_key)
                     if sl_val != task.get('progress', 0):
                         st.session_state.todos[idx]['progress'] = sl_val
                         if sl_val == 100:
@@ -316,13 +308,19 @@ if st.session_state.todos:
                             st.session_state.todos[idx]['completed'] = False
                         st.session_state.needs_save = True
                         st.rerun()
-                
-                with col_notes:
-                    notes_val = st.text_area("Task Notes", value=task.get('notes', ''), height=68, key=f"note_{t_id}")
+                    
+                    notes_val = st.text_area("Notes:", value=task.get('notes', ''), height=68, key=f"note_{t_id}")
                     if notes_val != task.get('notes', ''):
                         st.session_state.todos[idx]['notes'] = notes_val
                         st.session_state.needs_save = True
                         st.rerun()
+
+            with col_del:
+                st.markdown("<br>", unsafe_allow_html=True) # لضبط المحاذاة الرأسية
+                if st.button("❌", key=f"del_{t_id}", help="Delete Task"):
+                    st.session_state.todos.pop(idx)
+                    st.session_state.needs_save = True
+                    st.rerun()
 
     if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
