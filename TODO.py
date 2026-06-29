@@ -108,7 +108,7 @@ def flag_for_save():
 def get_task_index(task_id):
     return next((i for i, t in enumerate(st.session_state.todos) if t['id'] == task_id), -1)
 
-# --- دوال التحكم بالمهام (مع التزامن الذكي للواجهة) 🔧 ---
+# --- دوال التحكم المحدثة لحل مشكلة التأخير (No Widget Bounce) 🔧 ---
 def toggle_task(task_id, key):
     idx = get_task_index(task_id)
     if idx != -1:
@@ -116,10 +116,10 @@ def toggle_task(task_id, key):
         st.session_state.todos[idx]['completed'] = is_checked
         if is_checked:
             st.session_state.todos[idx]['progress'] = 100
-            st.session_state[f"prog_{task_id}"] = 100 # تزامن ذاكرة شريط السحب
+            st.session_state[f"prog_{task_id}"] = 100 # تزامن فوري لشريط السحب
         elif st.session_state.todos[idx]['progress'] == 100:
             st.session_state.todos[idx]['progress'] = 0
-            st.session_state[f"prog_{task_id}"] = 0 # تزامن ذاكرة شريط السحب
+            st.session_state[f"prog_{task_id}"] = 0
         flag_for_save()
 
 def update_title(task_id, key): 
@@ -137,10 +137,10 @@ def update_progress(task_id, key):
         st.session_state.todos[idx]['progress'] = new_prog
         if new_prog == 100:
             st.session_state.todos[idx]['completed'] = True
-            st.session_state[f"check_{task_id}"] = True # تزامن ذاكرة علامة الصح
+            st.session_state[f"check_{task_id}"] = True # تزامن فوري لعلامة الصح
         elif new_prog < 100 and st.session_state.todos[idx]['completed']:
             st.session_state.todos[idx]['completed'] = False
-            st.session_state[f"check_{task_id}"] = False # تزامن ذاكرة علامة الصح
+            st.session_state[f"check_{task_id}"] = False
         flag_for_save()
 
 def update_notes(task_id, key):
@@ -276,7 +276,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة ---
+# --- قسم الفلترة حسب التاريخ ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -304,15 +304,32 @@ if st.session_state.todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
         for task in filtered_todos: 
+            t_id = task['id']
+            
+            # --- التهيئة المسبقة للذاكرة لمنع أي رعشة أو تذبذب في الأدوات 🔧 ---
+            check_key = f"check_{t_id}"
+            title_key = f"edit_title_{t_id}"
+            prog_key = f"prog_{t_id}"
+            note_key = f"note_{t_id}"
+            
+            if check_key not in st.session_state:
+                st.session_state[check_key] = task.get('completed', False)
+            if title_key not in st.session_state:
+                st.session_state[title_key] = task.get('task', '')
+            if prog_key not in st.session_state:
+                st.session_state[prog_key] = task.get('progress', 0)
+            if note_key not in st.session_state:
+                st.session_state[note_key] = task.get('notes', '')
+                
             col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
             
             with col_check:
+                # تمت إزالة الـ value= ليعتمد الكود كلياً على الذاكرة السريعة
                 st.checkbox(
                     "", 
-                    value=task['completed'], 
-                    key=f"check_{task['id']}", 
+                    key=check_key, 
                     on_change=toggle_task, 
-                    args=(task['id'], f"check_{task['id']}")
+                    args=(t_id, check_key)
                 )
                     
             with col_text:
@@ -332,19 +349,18 @@ if st.session_state.todos:
             with col_del:
                 st.button(
                     "❌", 
-                    key=f"del_{task['id']}", 
+                    key=f"del_{t_id}", 
                     help="Delete Task", 
                     on_click=delete_task, 
-                    args=(task['id'],)
+                    args=(t_id,)
                 )
             
             with st.expander(f"📊 Progress: {task.get('progress', 0)}% | ✏️ Edit & Notes"):
                 st.text_input(
                     "✏️ Edit Task Name:", 
-                    value=task['task'], 
-                    key=f"edit_title_{task['id']}",
+                    key=title_key,
                     on_change=update_title,
-                    args=(task['id'], f"edit_title_{task['id']}")
+                    args=(t_id, title_key)
                 )
                 
                 st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
@@ -354,22 +370,20 @@ if st.session_state.todos:
                     st.slider(
                         "Completion %", 
                         0, 100, 
-                        task.get('progress', 0), 
                         step=10, 
-                        key=f"prog_{task['id']}",
+                        key=prog_key,
                         on_change=update_progress,
-                        args=(task['id'], f"prog_{task['id']}")
+                        args=(t_id, prog_key)
                     )
                 
                 with col_notes:
                     st.text_area(
                         "Task Notes", 
-                        task.get('notes', ''), 
                         height=68, 
                         placeholder="Add your notes here...", 
-                        key=f"note_{task['id']}",
+                        key=note_key,
                         on_change=update_notes,
-                        args=(task['id'], f"note_{task['id']}")
+                        args=(t_id, note_key)
                     )
 
     if any(task['completed'] for task in st.session_state.todos):
