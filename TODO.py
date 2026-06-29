@@ -64,12 +64,12 @@ div[role="radiogroup"] {
     margin-bottom: 15px;
 }
 
-/* 🆕 محاذاة دقيقة وموحدة (Pixel Perfect Alignment) */
+/* محاذاة دقيقة وموحدة (Pixel Perfect Alignment) */
 div[data-testid="stCheckbox"] {
     display: flex;
     align-items: center;
     height: 40px;
-    transform: translateY(-5px); /* 👈 سحب المربع للأعلى قليلاً ليتوازى مع النص */
+    transform: translateY(-10px); 
 }
 /* توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
 div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
@@ -77,7 +77,7 @@ div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
     min-height: 40px !important;
 }
 
-/* تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة وتلغي اللون الرمادي */
+/* تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة */
 div[data-baseweb="input"] {
     background-color: rgba(0, 0, 0, 0.2) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -91,6 +91,12 @@ div[data-baseweb="input"]:focus-within {
 }
 input::placeholder {
     color: #64748b !important;
+}
+
+/* 🆕 تغيير لون مربع الاختيار (الصح) إلى الأخضر عند التحديد ليتناسق مع الشارت */
+div[data-testid="stCheckbox"] label input:checked + div {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
 }
 </style>
 """
