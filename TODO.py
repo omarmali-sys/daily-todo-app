@@ -1,8 +1,11 @@
 import streamlit as st
 import os
 import time
+import json
+import datetime
 import pandas as pd
 import plotly.express as px
+import extra_streamlit_components as stx
 
 # 1. Page Configuration
 st.set_page_config(page_title="Daily To-Do", page_icon="✅", layout="wide")
@@ -22,12 +25,10 @@ css = """
 }
 h1, h2, h3, p, span { color: #f8fafc !important; }
 div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
-
 [data-testid="stSidebar"] {
     background-color: rgba(15, 23, 42, 0.8) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
-
 .completed-task {
     text-decoration: line-through;
     color: #94a3b8 !important;
@@ -36,9 +37,32 @@ div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 """
 st.markdown(css, unsafe_allow_html=True)
 
-# 3. Session State for Local/Private Tasks
-if 'todos' not in st.session_state:
-    st.session_state.todos = []
+# 3. Cookies Manager Setup (لحفظ البيانات في متصفح المستخدم)
+@st.cache_resource
+def get_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_manager()
+
+# جلب المهام من متصفح المستخدم الحالي
+saved_todos = cookie_manager.get(cookie="local_todos")
+
+if saved_todos is None:
+    todos = []
+elif isinstance(saved_todos, str):
+    try:
+        todos = json.loads(saved_todos)
+    except:
+        todos = []
+else:
+    todos = saved_todos
+
+# دالة لحفظ التحديثات في المتصفح
+def save_and_reload(current_todos):
+    # حفظ المهام لمدة 10 سنوات
+    expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
+    cookie_manager.set("local_todos", json.dumps(current_todos), expires_at=expire_date)
+    st.rerun()
 
 # ==========================================
 # 4. UI Navigation & Layout
@@ -65,9 +89,6 @@ with header_col1:
 with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
-
-# Load tasks from current user's session
-todos = st.session_state.todos
 
 if todos:
     completed_count = sum(1 for task in todos if task['completed'])
@@ -111,8 +132,8 @@ with st.form("add_todo_form", clear_on_submit=True):
         submitted = st.form_submit_button("Add Task", use_container_width=True)
         
     if submitted and new_task.strip():
-        st.session_state.todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
-        st.rerun()
+        todos.append({"task": new_task.strip(), "completed": False, "id": str(time.time())})
+        save_and_reload(todos)
 
 st.divider()
 
@@ -122,8 +143,8 @@ if todos:
         with col_check:
             is_checked = st.checkbox("", value=task['completed'], key=f"check_{task['id']}")
             if is_checked != task['completed']:
-                st.session_state.todos[index]['completed'] = is_checked
-                st.rerun()
+                todos[index]['completed'] = is_checked
+                save_and_reload(todos)
         with col_text:
             if task['completed']: 
                 st.markdown(f"<p class='completed-task'>{task['task']}</p>", unsafe_allow_html=True)
@@ -131,11 +152,11 @@ if todos:
                 st.markdown(f"<p>{task['task']}</p>", unsafe_allow_html=True)
         with col_del:
             if st.button("❌", key=f"del_{task['id']}", help="Delete Task"):
-                st.session_state.todos.pop(index)
-                st.rerun()
+                todos.pop(index)
+                save_and_reload(todos)
                 
     if any(task['completed'] for task in todos):
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🧹 Clear Completed Tasks"):
-            st.session_state.todos = [task for task in todos if not task['completed']]
-            st.rerun()
+            todos = [task for task in todos if not task['completed']]
+            save_and_reload(todos)
