@@ -12,7 +12,6 @@ st.set_page_config(page_title="Daily To-Do", page_icon="✅", layout="wide")
 # 2. Custom CSS (Supports Dark & Light Mode dynamically)
 css = """
 <style>
-/* تدرج الخلفية المظلمة يعمل بشكل افتراضي */
 .stApp {
     background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #334155);
     background-size: 400% 400%;
@@ -24,18 +23,16 @@ css = """
     100% { background-position: 0% 50%; }
 }
 
-/* الألوان الافتراضية للوضع المظلم */
-h1, h2, h3, p, span { color: #f8fafc !important; }
+h1, h2, h3, p, span, label { color: #f8fafc !important; }
 div[data-testid="stMetricValue"] { color: #38bdf8 !important; }
 [data-testid="stSidebar"] {
     background-color: rgba(15, 23, 42, 0.8) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 🆕 تنسيق خط الشطب المطور (لونه أحمر وواضح جداً) */
 .completed-task {
-    text-decoration: line-through #ef4444 2px !important; /* خط أحمر بسمك 2 بكسل */
-    color: #94a3b8 !important; /* لون النص نفسه رمادي هادئ للمهمة المنتهية */
+    text-decoration: line-through #ef4444 2px !important; 
+    color: #94a3b8 !important; 
 }
 
 div[data-testid="stExpander"] {
@@ -69,7 +66,6 @@ div[role="radiogroup"] {
     margin-bottom: 15px;
 }
 
-/* محاذاة دقيقة وموحدة (Pixel Perfect Alignment) */
 div[data-testid="stCheckbox"] {
     display: flex;
     align-items: center;
@@ -101,7 +97,6 @@ div[data-testid="stTextArea"] textarea {
     overflow-y: auto !important;
 }
 
-/* تعديل خلفية حقول النصوص (الملاحظات) لتكون شفافة وأنيقة */
 div[data-baseweb="input"], div[data-baseweb="textarea"] {
     background-color: rgba(0, 0, 0, 0.2) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -126,26 +121,24 @@ div[data-baseweb="checkbox"] input:checked + div svg {
     color: white !important;
 }
 
-/* 🆕 دعم الـ Light Mode بشكل تلقائي لضمان تناسق ألوان النصوص وحالتها */
 @media (prefers-color-scheme: light) {
     .stApp {
-        background: #f8fafc !important; /* خلفية فاتحة مريحة */
+        background: #f8fafc !important; 
     }
     h1, h2, h3, p, span, label { 
-        color: #1e293b !important; /* تحويل النصوص للرمادي الداكن الفخم */
+        color: #1e293b !important; 
     }
     .table-header {
         color: #64748b !important;
         border-bottom: 1px solid rgba(0,0,0,0.1);
     }
     div[data-baseweb="input"], div[data-baseweb="textarea"] {
-        background-color: #ffffff !important; /* حقول بيضاء في الوضع الفاتح */
+        background-color: #ffffff !important; 
         border: 1px solid rgba(0, 0, 0, 0.15) !important;
     }
     div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {
         color: #1e293b !important;
     }
-    /* يظل خط الشطب أحمر وممتاز في الوضع الفاتح أيضاً */
     .completed-task {
         text-decoration: line-through #ef4444 2px !important;
         color: #64748b !important;
@@ -203,12 +196,10 @@ def get_task_index(task_id):
 # ==========================================
 # 4. UI Sidebar Layout
 # ==========================================
-
 with st.sidebar:
     if os.path.exists("Logo.png"):
         st.image("Logo.png", use_container_width=True)
         st.markdown("---")
-        
     st.title("📌 Main Menu")
     st.info("Daily To-Do List is active. ✅")
     st.markdown("---")
@@ -217,7 +208,6 @@ with st.sidebar:
 # ==========================================
 # 5. Main Page Content
 # ==========================================
-
 header_col1, header_col2 = st.columns([5, 1])
 with header_col1:
     current_streak = st.session_state.streak_data.get("streak", 0)
@@ -362,7 +352,6 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
-        # عناوين الجدول
         st.markdown("<div class='table-header'>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
         with h_col1: st.markdown("Status")
@@ -380,7 +369,6 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
-            # توزيع الأعمدة بشكل أنيق
             col_check, col_text, col_notes, col_date, col_exp, col_del = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
             
             with col_check:
@@ -392,7 +380,6 @@ if st.session_state.todos:
                     st.rerun()
                     
             with col_text:
-                # 🆕 تطبيق كود التمييز المطور باللون الأحمر لخط الشطب
                 if task['completed']:
                     text_html = f"<div style='display: flex; align-items: center; height: 40px;'><span class='completed-task'><b>{task['task']}</b></span></div>"
                 else:
