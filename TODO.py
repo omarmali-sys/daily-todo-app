@@ -70,7 +70,19 @@ div[data-testid="stCheckbox"] {
     align-items: center;
     height: 40px;
     transform: translateY(-10px); 
+    
+    /* 🆕 اختراق متغيرات Streamlit الافتراضية لإجبارها على اللون الأخضر */
+    --primary-color: #10b981 !important;
 }
+
+/* 🆕 استهداف مباشر إضافي لضمان تطبيق اللون الأخضر في جميع إصدارات المتصفحات */
+div[data-testid="stCheckbox"] label input[type="checkbox"]:checked + div,
+div[data-testid="stCheckbox"] label input[aria-checked="true"] + div,
+div[data-testid="stCheckbox"] label input:checked + div > div {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+}
+
 /* توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
 div[data-testid="stTextInput"] > div, div[data-testid="stButton"] button {
     height: 40px !important;
@@ -87,16 +99,10 @@ div[data-baseweb="input"]:hover {
     border-color: rgba(255, 255, 255, 0.3) !important;
 }
 div[data-baseweb="input"]:focus-within {
-    border-color: #38bdf8 !important;
+    border-color: #10b981 !important; /* جعل لون التحديد الداخلي أخضر أيضاً */
 }
 input::placeholder {
     color: #64748b !important;
-}
-
-/* 🆕 تغيير لون مربع الاختيار (الصح) إلى الأخضر عند التحديد ليتناسق مع الشارت */
-div[data-testid="stCheckbox"] label input:checked + div {
-    background-color: #10b981 !important;
-    border-color: #10b981 !important;
 }
 </style>
 """
