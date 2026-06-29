@@ -106,10 +106,10 @@ def flag_for_save():
     cookies["todo_streaks"] = json.dumps(st.session_state.streak_data)
     st.session_state.needs_save = True
 
-# --- دوال التحكم المحدثة (تعتمد على ID المهمة لتجنب أخطاء الفلترة) 🆕 ---
 def get_task_index(task_id):
     return next((i for i, t in enumerate(st.session_state.todos) if t['id'] == task_id), -1)
 
+# --- دوال التحكم بالمهام عبر الـ Callbacks ---
 def toggle_task(task_id, key):
     idx = get_task_index(task_id)
     if idx != -1:
@@ -120,6 +120,14 @@ def toggle_task(task_id, key):
         elif st.session_state.todos[idx]['progress'] == 100:
             st.session_state.todos[idx]['progress'] = 0
         flag_for_save()
+
+def update_title(task_id, key): # 🆕 دالة تحديث مسمى المهمة الجديدة
+    idx = get_task_index(task_id)
+    if idx != -1:
+        new_val = st.session_state[key].strip()
+        if new_val:
+            st.session_state.todos[idx]['task'] = new_val
+            flag_for_save()
 
 def update_progress(task_id, key):
     idx = get_task_index(task_id)
@@ -265,7 +273,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة حسب التاريخ 🆕 ---
+# --- قسم الفلترة حسب التاريخ ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -273,7 +281,6 @@ if st.session_state.todos:
         horizontal=True
     )
     
-    # تطبيق الفلتر
     filtered_todos = []
     current_date_str = datetime.date.today().isoformat()
     
@@ -303,7 +310,7 @@ if st.session_state.todos:
                     value=task['completed'], 
                     key=f"check_{task['id']}", 
                     on_change=toggle_task, 
-                    args=(task['id'], f"check_{task['id']}") # 🆕 تمرير الـ ID بدلاً من Index
+                    args=(task['id'], f"check_{task['id']}")
                 )
                     
             with col_text:
@@ -312,7 +319,6 @@ if st.session_state.todos:
                 else: 
                     st.markdown(f"<p><b>{task['task']}</b></p>", unsafe_allow_html=True)
                 
-                # تنسيق لون التاريخ بناءً على حالته (متأخر أحمر، اليوم أصفر، قادم رمادي)
                 t_date = task.get('date', '')
                 if t_date < current_date_str and not task['completed']:
                     st.markdown(f"<span style='color: #ef4444; font-size: 0.8rem;'>⚠️ Overdue: {t_date}</span>", unsafe_allow_html=True)
@@ -327,12 +333,23 @@ if st.session_state.todos:
                     key=f"del_{task['id']}", 
                     help="Delete Task", 
                     on_click=delete_task, 
-                    args=(task['id'],) # 🆕 تمرير الـ ID
+                    args=(task['id'],)
                 )
             
-            with st.expander(f"📊 Progress: {task.get('progress', 0)}% | 📝 Notes"):
-                col_prog, col_notes = st.columns([1, 1.5])
+            # القائمة المنسدلة المحدثة التي تحتوي على ميزة تعديل الاسم 🆕
+            with st.expander(f"📊 Progress: {task.get('progress', 0)}% | ✏️ Edit & Notes"):
+                # إضافة خانة تعديل مسمى المهمة أعلى شريط الإنجاز والملاحظات 🆕
+                st.text_input(
+                    "✏️ Edit Task Name:", 
+                    value=task['task'], 
+                    key=f"edit_title_{task['id']}",
+                    on_change=update_title,
+                    args=(task['id'], f"edit_title_{task['id']}")
+                )
                 
+                st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
+                
+                col_prog, col_notes = st.columns([1, 1.5])
                 with col_prog:
                     st.slider(
                         "Completion %", 
