@@ -70,17 +70,16 @@ div[data-testid="stCheckbox"] {
     align-items: center;
     height: 40px;
     transform: translateY(-10px); 
-    
-    /* 🆕 اختراق متغيرات Streamlit الافتراضية لإجبارها على اللون الأخضر */
-    --primary-color: #10b981 !important;
 }
 
-/* 🆕 استهداف مباشر إضافي لضمان تطبيق اللون الأخضر في جميع إصدارات المتصفحات */
-div[data-testid="stCheckbox"] label input[type="checkbox"]:checked + div,
-div[data-testid="stCheckbox"] label input[aria-checked="true"] + div,
-div[data-testid="stCheckbox"] label input:checked + div > div {
+/* 🆕 الاختراق الجذري للمربع الأحمر ليصبح أخضر */
+div[data-baseweb="checkbox"] input:checked + div {
     background-color: #10b981 !important;
     border-color: #10b981 !important;
+}
+div[data-baseweb="checkbox"] input:checked + div svg {
+    fill: white !important;
+    color: white !important;
 }
 
 /* توحيد ارتفاع الأزرار وصناديق النصوص لتتساوى مع النصوص */
@@ -99,7 +98,7 @@ div[data-baseweb="input"]:hover {
     border-color: rgba(255, 255, 255, 0.3) !important;
 }
 div[data-baseweb="input"]:focus-within {
-    border-color: #10b981 !important; /* جعل لون التحديد الداخلي أخضر أيضاً */
+    border-color: #10b981 !important;
 }
 input::placeholder {
     color: #64748b !important;
@@ -279,7 +278,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المنظمة ذات الـ 6 أعمدة ---
+# --- قسم الفلترة وقائمة المهام ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -315,7 +314,6 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
-        # عناوين الجدول
         st.markdown("<div class='table-header'>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
         with h_col1: st.markdown("Status")
@@ -333,7 +331,6 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
-            # توزيع الأعمدة بشكل أنيق
             col_check, col_text, col_notes, col_date, col_exp, col_del = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
             
             with col_check:
