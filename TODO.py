@@ -64,12 +64,10 @@ div[role="radiogroup"] {
     margin-bottom: 15px;
 }
 
-/* 🆕 محاذاة دقيقة (Pixel Perfect) لعناصر الجدول */
-/* إنزال مربع الاختيار (الصح) ليتوازى مع النص */
+/* محاذاة دقيقة (Pixel Perfect) لعناصر الجدول */
 div[data-testid="column"]:nth-child(1) div[data-testid="stCheckbox"] {
     transform: translateY(5px);
 }
-/* رفع زر الحذف ليتوازى تماماً مع القائمة المنسدلة */
 div[data-testid="column"]:nth-child(5) div[data-testid="stButton"] {
     transform: translateY(-13px);
 }
@@ -248,7 +246,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المنظمة ---
+# --- قسم الفلترة وقائمة المهام ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -307,7 +305,6 @@ if st.session_state.todos:
                     text_html = f"<span class='completed-task'><b>{task['task']}</b></span>"
                 else: 
                     text_html = f"<span><b>{task['task']}</b></span>"
-                # دفع النص للأسفل ليتوسط المسافة
                 st.markdown(f"<div style='margin-top: 10px;'>{text_html}</div>", unsafe_allow_html=True)
                 
             with col_date:
@@ -318,7 +315,6 @@ if st.session_state.todos:
                     date_html = f"<span style='color: #fbbf24; font-size: 0.9rem;'>📅 Today</span>"
                 else:
                     date_html = f"<span style='color: #94a3b8; font-size: 0.9rem;'>📅 {t_date}</span>"
-                # دفع التاريخ للأسفل ليتوسط المسافة
                 st.markdown(f"<div style='margin-top: 10px;'>{date_html}</div>", unsafe_allow_html=True)
             
             with col_exp:
@@ -326,6 +322,19 @@ if st.session_state.todos:
                     title_val = st.text_input("Name:", value=task['task'], key=f"edit_{t_id}")
                     if title_val != task['task']:
                         st.session_state.todos[idx]['task'] = title_val
+                        st.session_state.needs_save = True
+                        st.rerun()
+                    
+                    # 🆕 خانة تعديل تاريخ الاستحقاق الجديدة مدمجة هنا بذكاء
+                    parsed_date = datetime.date.fromisoformat(task.get('date', current_date_str))
+                    new_date_val = st.date_input("Due Date:", value=parsed_date, key=f"edit_date_{t_id}")
+                    if new_date_val.isoformat() != task.get('date', ''):
+                        st.session_state.todos[idx]['date'] = new_date_val.isoformat()
+                        # إعادة فرز المهام بناءً على التعديل الجديد ليبقى الجدول مرتباً دائماً
+                        try:
+                            st.session_state.todos.sort(key=lambda x: x.get('date', ''))
+                        except:
+                            pass
                         st.session_state.needs_save = True
                         st.rerun()
                     
