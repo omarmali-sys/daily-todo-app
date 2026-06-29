@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import json
-import datetime
+import datetime # 🆕 تم التأكد من استدعاء مكتبة التواريخ بالكامل
 import pandas as pd
 import plotly.express as px
 from streamlit_cookies_manager import EncryptedCookieManager
@@ -75,6 +75,13 @@ if "todos" not in st.session_state:
         for t in st.session_state.todos:
             if 'progress' not in t: t['progress'] = 100 if t.get('completed') else 0
             if 'notes' not in t: t['notes'] = ""
+            if 'date' not in t: t['date'] = datetime.date.today().isoformat() # 🆕 للمهام القديمة التي لا تحتوي على تاريخ
+            
+        # فرز القائمة تلقائياً عند أول تحميل للتطبيق بناءً على التاريخ 🆕
+        try:
+            st.session_state.todos.sort(key=lambda x: x.get('date', ''))
+        except:
+            pass
 
 # تهيئة نظام الشعلة (Streaks) والاحتفال
 if "streak_data" not in st.session_state:
@@ -155,11 +162,14 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
-# نموذج إضافة مهمة جديدة
+# نموذج إضافة مهمة جديدة مع التاريخ المحدث 🆕
 with st.form("add_todo_form", clear_on_submit=True):
-    col1, col2 = st.columns([4, 1])
-    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="Add your Task")
+    col1, col2, col3 = st.columns([3, 1.2, 0.8]) # تم تقسيم السطر لثلاثة أعمدة ليتسع التاريخ
+    with col1: 
+        new_task = st.text_input("➕ Add a new task...", placeholder="Add your Task")
     with col2:
+        task_date = st.date_input("📅 Due Date", datetime.date.today()) # خانة اختيار التاريخ 🆕
+    with col3:
         st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("Add Task", use_container_width=True)
         
@@ -170,9 +180,16 @@ with st.form("add_todo_form", clear_on_submit=True):
             "completed": False, 
             "progress": 0, 
             "notes": "", 
+            "date": task_date.isoformat(), # حفظ التاريخ بصيغة نصية YYYY-MM-DD 🆕
             "id": str(time.time())
         })
-        # إذا تم إضافة مهمة جديدة والاحتفال كان مفعلاً، نلغي الاحتفال
+        
+        # فرز القائمة مباشرة بعد الإضافة لضمان الترتيب الصحيح ومنع التداخل 🆕
+        try:
+            st.session_state.todos.sort(key=lambda x: x.get('date', ''))
+        except:
+            pass
+            
         st.session_state.celebrated = False 
         flag_for_save()
         st.rerun()
@@ -187,7 +204,6 @@ if st.session_state.todos:
     
     progress = completed_count / total_count if total_count > 0 else 0
 
-    # منطق نظام الشعلة (Streaks) والاحتفال
     today_str = datetime.date.today().isoformat()
     yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
     
@@ -195,23 +211,20 @@ if st.session_state.todos:
         last_date = st.session_state.streak_data.get("last_date", "")
         streak = st.session_state.streak_data.get("streak", 0)
         
-        # إذا لم يتم احتساب الشعلة لليوم بعد
         if last_date != today_str:
             if last_date == yesterday_str:
-                streak += 1 # متابعة السلسلة
+                streak += 1
             else:
-                streak = 1  # سلسلة جديدة
+                streak = 1
                 
             st.session_state.streak_data["streak"] = streak
             st.session_state.streak_data["last_date"] = today_str
             flag_for_save()
             
-        # إطلاق البالونات إذا لم نحتفل بعد
         if not st.session_state.celebrated:
             st.balloons()
             st.session_state.celebrated = True
     elif progress < 1.0:
-        # إذا ألغى تحديد مهمة، نتيح فرصة للاحتفال مرة أخرى عند الإكمال
         st.session_state.celebrated = False
 
     df_pie = pd.DataFrame({
@@ -241,7 +254,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم قائمة المهام ---
+# --- قسم قائمة المهام المنظم حسب التاريخ ---
 if st.session_state.todos:
     for index, task in enumerate(st.session_state.todos): 
         col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
@@ -260,6 +273,8 @@ if st.session_state.todos:
                 st.markdown(f"<p class='completed-task'><b>{task['task']}</b></p>", unsafe_allow_html=True)
             else: 
                 st.markdown(f"<p><b>{task['task']}</b></p>", unsafe_allow_html=True)
+            # عرض تاريخ الاستحقاق بشكل واضح وأنيق أسفل المهمة 🆕
+            st.caption(f"📅 Due Date: {task.get('date', '')}")
                 
         with col_del:
             st.button(
