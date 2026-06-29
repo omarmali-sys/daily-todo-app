@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import json
-import datetime # 🆕 تم التأكد من استدعاء مكتبة التواريخ بالكامل
+import datetime
 import pandas as pd
 import plotly.express as px
 from streamlit_cookies_manager import EncryptedCookieManager
@@ -48,6 +48,13 @@ div[data-testid="stExpander"] {
     display: inline-block;
     margin-left: 15px;
 }
+/* تنسيق الفلتر */
+div[role="radiogroup"] {
+    justify-content: center;
+    background-color: rgba(255,255,255,0.05);
+    padding: 10px;
+    border-radius: 10px;
+}
 </style>
 """
 st.markdown(css, unsafe_allow_html=True)
@@ -64,7 +71,6 @@ if "todos" not in st.session_state:
     st.session_state.todos = []
     st.session_state.needs_save = False
     
-    # استرجاع المهام
     saved_todos = cookies.get("local_todos")
     if saved_todos:
         try:
@@ -75,15 +81,13 @@ if "todos" not in st.session_state:
         for t in st.session_state.todos:
             if 'progress' not in t: t['progress'] = 100 if t.get('completed') else 0
             if 'notes' not in t: t['notes'] = ""
-            if 'date' not in t: t['date'] = datetime.date.today().isoformat() # 🆕 للمهام القديمة التي لا تحتوي على تاريخ
+            if 'date' not in t: t['date'] = datetime.date.today().isoformat()
             
-        # فرز القائمة تلقائياً عند أول تحميل للتطبيق بناءً على التاريخ 🆕
         try:
             st.session_state.todos.sort(key=lambda x: x.get('date', ''))
         except:
             pass
 
-# تهيئة نظام الشعلة (Streaks) والاحتفال
 if "streak_data" not in st.session_state:
     saved_streaks = cookies.get("todo_streaks")
     if saved_streaks:
@@ -97,34 +101,42 @@ if "streak_data" not in st.session_state:
 if "celebrated" not in st.session_state:
     st.session_state.celebrated = False
 
-# دالة الحفظ الذكية
 def flag_for_save():
     cookies["local_todos"] = json.dumps(st.session_state.todos)
     cookies["todo_streaks"] = json.dumps(st.session_state.streak_data)
     st.session_state.needs_save = True
 
-# --- دوال التحكم (Callbacks) ---
-def toggle_task(index, key):
-    is_checked = st.session_state[key]
-    st.session_state.todos[index]['completed'] = is_checked
-    if is_checked:
-        st.session_state.todos[index]['progress'] = 100
-    elif st.session_state.todos[index]['progress'] == 100:
-        st.session_state.todos[index]['progress'] = 0
-    flag_for_save()
+# --- دوال التحكم المحدثة (تعتمد على ID المهمة لتجنب أخطاء الفلترة) 🆕 ---
+def get_task_index(task_id):
+    return next((i for i, t in enumerate(st.session_state.todos) if t['id'] == task_id), -1)
 
-def update_progress(index, key):
-    new_prog = st.session_state[key]
-    st.session_state.todos[index]['progress'] = new_prog
-    if new_prog == 100:
-        st.session_state.todos[index]['completed'] = True
-    elif new_prog < 100 and st.session_state.todos[index]['completed']:
-        st.session_state.todos[index]['completed'] = False
-    flag_for_save()
+def toggle_task(task_id, key):
+    idx = get_task_index(task_id)
+    if idx != -1:
+        is_checked = st.session_state[key]
+        st.session_state.todos[idx]['completed'] = is_checked
+        if is_checked:
+            st.session_state.todos[idx]['progress'] = 100
+        elif st.session_state.todos[idx]['progress'] == 100:
+            st.session_state.todos[idx]['progress'] = 0
+        flag_for_save()
 
-def update_notes(index, key):
-    st.session_state.todos[index]['notes'] = st.session_state[key]
-    flag_for_save()
+def update_progress(task_id, key):
+    idx = get_task_index(task_id)
+    if idx != -1:
+        new_prog = st.session_state[key]
+        st.session_state.todos[idx]['progress'] = new_prog
+        if new_prog == 100:
+            st.session_state.todos[idx]['completed'] = True
+        elif new_prog < 100 and st.session_state.todos[idx]['completed']:
+            st.session_state.todos[idx]['completed'] = False
+        flag_for_save()
+
+def update_notes(task_id, key):
+    idx = get_task_index(task_id)
+    if idx != -1:
+        st.session_state.todos[idx]['notes'] = st.session_state[key]
+        flag_for_save()
 
 def delete_task(task_id):
     st.session_state.todos = [t for t in st.session_state.todos if t['id'] != task_id]
@@ -162,13 +174,13 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
-# نموذج إضافة مهمة جديدة مع التاريخ المحدث 🆕
+# نموذج إضافة مهمة جديدة
 with st.form("add_todo_form", clear_on_submit=True):
-    col1, col2, col3 = st.columns([3, 1.2, 0.8]) # تم تقسيم السطر لثلاثة أعمدة ليتسع التاريخ
+    col1, col2, col3 = st.columns([3, 1.2, 0.8])
     with col1: 
         new_task = st.text_input("➕ Add a new task...", placeholder="Add your Task")
     with col2:
-        task_date = st.date_input("📅 Due Date", datetime.date.today()) # خانة اختيار التاريخ 🆕
+        task_date = st.date_input("📅 Due Date", datetime.date.today())
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("Add Task", use_container_width=True)
@@ -180,11 +192,10 @@ with st.form("add_todo_form", clear_on_submit=True):
             "completed": False, 
             "progress": 0, 
             "notes": "", 
-            "date": task_date.isoformat(), # حفظ التاريخ بصيغة نصية YYYY-MM-DD 🆕
+            "date": task_date.isoformat(),
             "id": str(time.time())
         })
         
-        # فرز القائمة مباشرة بعد الإضافة لضمان الترتيب الصحيح ومنع التداخل 🆕
         try:
             st.session_state.todos.sort(key=lambda x: x.get('date', ''))
         except:
@@ -247,73 +258,106 @@ if st.session_state.todos:
     with chart_col: st.plotly_chart(fig, use_container_width=True)
     with progress_col:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.progress(progress, text=f"Task Completion: {completed_count}/{total_count} ({int(progress * 100)}%)")
+        st.progress(progress, text=f"Overall Task Completion: {completed_count}/{total_count} ({int(progress * 100)}%)")
         
 else:
     st.info("Your task list is empty. Add a new task above to get started!")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم قائمة المهام المنظم حسب التاريخ ---
+# --- قسم الفلترة حسب التاريخ 🆕 ---
 if st.session_state.todos:
-    for index, task in enumerate(st.session_state.todos): 
-        col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
-        
-        with col_check:
-            st.checkbox(
-                "", 
-                value=task['completed'], 
-                key=f"check_{task['id']}", 
-                on_change=toggle_task, 
-                args=(index, f"check_{task['id']}")
-            )
-                
-        with col_text:
-            if task['completed']: 
-                st.markdown(f"<p class='completed-task'><b>{task['task']}</b></p>", unsafe_allow_html=True)
-            else: 
-                st.markdown(f"<p><b>{task['task']}</b></p>", unsafe_allow_html=True)
-            # عرض تاريخ الاستحقاق بشكل واضح وأنيق أسفل المهمة 🆕
-            st.caption(f"📅 Due Date: {task.get('date', '')}")
-                
-        with col_del:
-            st.button(
-                "❌", 
-                key=f"del_{task['id']}", 
-                help="Delete Task", 
-                on_click=delete_task, 
-                args=(task['id'],)
-            )
-        
-        # القائمة المنسدلة للنسبة والملاحظات لكل مهمة
-        with st.expander(f"📊 Progress: {task.get('progress', 0)}% | 📝 Notes"):
-            col_prog, col_notes = st.columns([1, 1.5])
+    filter_option = st.radio(
+        "🔍 Filter Tasks by Date:", 
+        ["All Tasks 📋", "Today 📅", "Overdue ⚠️", "Upcoming ⏭️"], 
+        horizontal=True
+    )
+    
+    # تطبيق الفلتر
+    filtered_todos = []
+    current_date_str = datetime.date.today().isoformat()
+    
+    for task in st.session_state.todos:
+        t_date = task.get('date', '')
+        if filter_option == "All Tasks 📋":
+            filtered_todos.append(task)
+        elif filter_option == "Today 📅" and t_date == current_date_str:
+            filtered_todos.append(task)
+        elif filter_option == "Overdue ⚠️" and t_date < current_date_str and not task.get('completed'):
+            filtered_todos.append(task)
+        elif filter_option == "Upcoming ⏭️" and t_date > current_date_str:
+            filtered_todos.append(task)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- عرض قائمة المهام المفلترة ---
+    if not filtered_todos:
+        st.info(f"No tasks found for: {filter_option}")
+    else:
+        for task in filtered_todos: 
+            col_check, col_text, col_del = st.columns([0.5, 4, 0.5])
             
-            with col_prog:
-                st.slider(
-                    "Completion %", 
-                    0, 100, 
-                    task.get('progress', 0), 
-                    step=10, 
-                    key=f"prog_{task['id']}",
-                    on_change=update_progress,
-                    args=(index, f"prog_{task['id']}")
+            with col_check:
+                st.checkbox(
+                    "", 
+                    value=task['completed'], 
+                    key=f"check_{task['id']}", 
+                    on_change=toggle_task, 
+                    args=(task['id'], f"check_{task['id']}") # 🆕 تمرير الـ ID بدلاً من Index
+                )
+                    
+            with col_text:
+                if task['completed']: 
+                    st.markdown(f"<p class='completed-task'><b>{task['task']}</b></p>", unsafe_allow_html=True)
+                else: 
+                    st.markdown(f"<p><b>{task['task']}</b></p>", unsafe_allow_html=True)
+                
+                # تنسيق لون التاريخ بناءً على حالته (متأخر أحمر، اليوم أصفر، قادم رمادي)
+                t_date = task.get('date', '')
+                if t_date < current_date_str and not task['completed']:
+                    st.markdown(f"<span style='color: #ef4444; font-size: 0.8rem;'>⚠️ Overdue: {t_date}</span>", unsafe_allow_html=True)
+                elif t_date == current_date_str:
+                    st.markdown(f"<span style='color: #fbbf24; font-size: 0.8rem;'>📅 Today: {t_date}</span>", unsafe_allow_html=True)
+                else:
+                    st.caption(f"📅 Due Date: {t_date}")
+                    
+            with col_del:
+                st.button(
+                    "❌", 
+                    key=f"del_{task['id']}", 
+                    help="Delete Task", 
+                    on_click=delete_task, 
+                    args=(task['id'],) # 🆕 تمرير الـ ID
                 )
             
-            with col_notes:
-                st.text_area(
-                    "Task Notes", 
-                    task.get('notes', ''), 
-                    height=68, 
-                    placeholder="Add your notes here...", 
-                    key=f"note_{task['id']}",
-                    on_change=update_notes,
-                    args=(index, f"note_{task['id']}")
-                )
+            with st.expander(f"📊 Progress: {task.get('progress', 0)}% | 📝 Notes"):
+                col_prog, col_notes = st.columns([1, 1.5])
+                
+                with col_prog:
+                    st.slider(
+                        "Completion %", 
+                        0, 100, 
+                        task.get('progress', 0), 
+                        step=10, 
+                        key=f"prog_{task['id']}",
+                        on_change=update_progress,
+                        args=(task['id'], f"prog_{task['id']}")
+                    )
+                
+                with col_notes:
+                    st.text_area(
+                        "Task Notes", 
+                        task.get('notes', ''), 
+                        height=68, 
+                        placeholder="Add your notes here...", 
+                        key=f"note_{task['id']}",
+                        on_change=update_notes,
+                        args=(task['id'], f"note_{task['id']}")
+                    )
 
     if any(task['completed'] for task in st.session_state.todos):
         st.markdown("<br>", unsafe_allow_html=True)
-        st.button("🧹 Clear Completed Tasks", on_click=clear_completed)
+        st.button("🧹 Clear All Completed Tasks", on_click=clear_completed)
 
 # ==========================================
 # 6. التنفيذ النهائي للحفظ
