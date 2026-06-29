@@ -68,7 +68,8 @@ div[role="radiogroup"] {
 div[data-testid="column"]:nth-child(1) div[data-testid="stCheckbox"] {
     transform: translateY(5px);
 }
-div[data-testid="column"]:nth-child(5) div[data-testid="stButton"] {
+/* 🆕 زر الحذف أصبح الآن في العمود السادس، فقمنا بتحديث الكود ليستهدفه */
+div[data-testid="column"]:nth-child(6) div[data-testid="stButton"] {
     transform: translateY(-13px);
 }
 </style>
@@ -246,9 +247,8 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام المطور 🆕 ---
+# --- قسم الفلترة وقائمة المهام المنظمة ذات الـ 6 أعمدة 🆕 ---
 if st.session_state.todos:
-    # 🆕 إضافة الفلتر الجديد Custom Date
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
         ["All Tasks 📋", "Today 📅", "Overdue ⚠️", "Upcoming ⏭️", "Custom Date 📆"], 
@@ -257,7 +257,6 @@ if st.session_state.todos:
     
     custom_filter_date_str = None
     if filter_option == "Custom Date 📆":
-        # عرض تقويم صغير وأنيق عند اختيار Custom Date
         f_col1, f_col2 = st.columns([1.5, 4])
         with f_col1:
             custom_filter_date = st.date_input("🗓️ Select Date:", datetime.date.today())
@@ -284,14 +283,15 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
-        # عناوين الجدول
+        # 🆕 تصميم عناوين الجدول السداسية
         st.markdown("<div class='table-header'>", unsafe_allow_html=True)
-        h_col1, h_col2, h_col3, h_col4, h_col5 = st.columns([0.4, 3, 1.5, 1.5, 0.5])
+        h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
         with h_col1: st.markdown("Status")
         with h_col2: st.markdown("Task Name")
-        with h_col3: st.markdown("Due Date")
-        with h_col4: st.markdown("Details")
-        with h_col5: st.markdown("Action")
+        with h_col3: st.markdown("Notes")
+        with h_col4: st.markdown("Due Date")
+        with h_col5: st.markdown("Details")
+        with h_col6: st.markdown("Action")
         st.markdown("</div>", unsafe_allow_html=True)
 
         for task in filtered_todos: 
@@ -301,24 +301,46 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
-            col_check, col_text, col_date, col_exp, col_del = st.columns([0.4, 3, 1.5, 1.5, 0.5])
+            # 🆕 توزيع المساحات بشكل أنيق ليتسع عمود الملاحظات
+            col_check, col_text, col_notes, col_date, col_exp, col_del = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
             
             with col_check:
+                st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
                 chk_val = st.checkbox("", value=task['completed'], key=chk_key)
                 if chk_val != task['completed']:
                     st.session_state.todos[idx]['completed'] = chk_val
                     st.session_state.todos[idx]['progress'] = 100 if chk_val else 0
                     st.session_state.needs_save = True
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
                     
             with col_text:
+                st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 if task['completed']: 
                     text_html = f"<span class='completed-task'><b>{task['task']}</b></span>"
                 else: 
                     text_html = f"<span><b>{task['task']}</b></span>"
-                st.markdown(f"<div style='margin-top: 10px;'>{text_html}</div>", unsafe_allow_html=True)
+                st.markdown(text_html, unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            # 🆕 العمود الجديد الخاص بالملاحظات (مرئي ومباشر)
+            with col_notes:
+                st.markdown("<div style='margin-top: 2px;'>", unsafe_allow_html=True)
+                notes_val = st.text_input(
+                    "Notes", 
+                    value=task.get('notes', ''), 
+                    placeholder="📝 Add notes...", 
+                    key=f"note_{t_id}", 
+                    label_visibility="collapsed"
+                )
+                if notes_val != task.get('notes', ''):
+                    st.session_state.todos[idx]['notes'] = notes_val
+                    st.session_state.needs_save = True
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
                 
             with col_date:
+                st.markdown("<div style='margin-top: 10px;'>", unsafe_allow_html=True)
                 t_date = task.get('date', '')
                 if t_date < current_date_str and not task['completed']:
                     date_html = f"<span style='color: #ef4444; font-size: 0.9rem;'>⚠️ {t_date}</span>"
@@ -326,9 +348,11 @@ if st.session_state.todos:
                     date_html = f"<span style='color: #fbbf24; font-size: 0.9rem;'>📅 Today</span>"
                 else:
                     date_html = f"<span style='color: #94a3b8; font-size: 0.9rem;'>📅 {t_date}</span>"
-                st.markdown(f"<div style='margin-top: 10px;'>{date_html}</div>", unsafe_allow_html=True)
+                st.markdown(date_html, unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
             
             with col_exp:
+                # 🆕 القائمة المنسدلة أصبحت أنظف واقتصرت على تعديل الاسم والتاريخ وشريط الإنجاز
                 with st.expander(f"📊 {task.get('progress', 0)}% | ✏️ Edit"):
                     title_val = st.text_input("Name:", value=task['task'], key=f"edit_{t_id}")
                     if title_val != task['task']:
@@ -354,12 +378,6 @@ if st.session_state.todos:
                             st.session_state.todos[idx]['completed'] = True
                         elif sl_val < 100 and st.session_state.todos[idx]['completed']:
                             st.session_state.todos[idx]['completed'] = False
-                        st.session_state.needs_save = True
-                        st.rerun()
-                    
-                    notes_val = st.text_area("Notes:", value=task.get('notes', ''), height=68, key=f"note_{t_id}")
-                    if notes_val != task.get('notes', ''):
-                        st.session_state.todos[idx]['notes'] = notes_val
                         st.session_state.needs_save = True
                         st.rerun()
 
