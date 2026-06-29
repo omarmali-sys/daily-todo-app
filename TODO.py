@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import json
+import datetime
 import pandas as pd
 import plotly.express as px
 from streamlit_cookies_manager import EncryptedCookieManager
@@ -37,6 +38,16 @@ div[data-testid="stExpander"] {
     border: 1px solid rgba(255, 255, 255, 0.1);
     margin-bottom: 10px;
 }
+.streak-badge {
+    background-color: rgba(255, 165, 0, 0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 1.2rem;
+    color: #fbbf24;
+    border: 1px solid #fbbf24;
+    display: inline-block;
+    margin-left: 15px;
+}
 </style>
 """
 st.markdown(css, unsafe_allow_html=True)
@@ -48,11 +59,12 @@ if not cookies.ready():
     st.info("جاري مزامنة المهام مع المتصفح... 🔄")
     st.stop()
 
-# تهيئة الذاكرة السريعة وإشارة الحفظ
+# تهيئة الذاكرة السريعة (Session State)
 if "todos" not in st.session_state:
     st.session_state.todos = []
-    st.session_state.needs_save = False # 🆕 إشارة الحفظ
+    st.session_state.needs_save = False
     
+    # استرجاع المهام
     saved_todos = cookies.get("local_todos")
     if saved_todos:
         try:
@@ -64,9 +76,24 @@ if "todos" not in st.session_state:
             if 'progress' not in t: t['progress'] = 100 if t.get('completed') else 0
             if 'notes' not in t: t['notes'] = ""
 
-# دالة الحفظ الذكية (تقوم فقط بتجهيز البيانات وتفعيل إشارة الحفظ)
+# تهيئة نظام الشعلة (Streaks) والاحتفال
+if "streak_data" not in st.session_state:
+    saved_streaks = cookies.get("todo_streaks")
+    if saved_streaks:
+        try:
+            st.session_state.streak_data = json.loads(saved_streaks)
+        except:
+            st.session_state.streak_data = {"streak": 0, "last_date": ""}
+    else:
+        st.session_state.streak_data = {"streak": 0, "last_date": ""}
+
+if "celebrated" not in st.session_state:
+    st.session_state.celebrated = False
+
+# دالة الحفظ الذكية
 def flag_for_save():
     cookies["local_todos"] = json.dumps(st.session_state.todos)
+    cookies["todo_streaks"] = json.dumps(st.session_state.streak_data)
     st.session_state.needs_save = True
 
 # --- دوال التحكم (Callbacks) ---
@@ -120,7 +147,9 @@ with st.sidebar:
 
 header_col1, header_col2 = st.columns([5, 1])
 with header_col1:
-    st.title("✅ Daily To-Do List")
+    current_streak = st.session_state.streak_data.get("streak", 0)
+    streak_html = f"<span class='streak-badge'>🔥 {current_streak} Days Streak</span>" if current_streak > 0 else ""
+    st.markdown(f"<h1>✅ Daily To-Do List {streak_html}</h1>", unsafe_allow_html=True)
     st.markdown("Stay on top of your daily tasks, progress, and notes.")
 with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
@@ -129,7 +158,7 @@ st.divider()
 # نموذج إضافة مهمة جديدة
 with st.form("add_todo_form", clear_on_submit=True):
     col1, col2 = st.columns([4, 1])
-    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="e.g., Add your Task")
+    with col1: new_task = st.text_input("➕ Add a new task...", placeholder="Add your Task")
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("Add Task", use_container_width=True)
@@ -143,18 +172,47 @@ with st.form("add_todo_form", clear_on_submit=True):
             "notes": "", 
             "id": str(time.time())
         })
+        # إذا تم إضافة مهمة جديدة والاحتفال كان مفعلاً، نلغي الاحتفال
+        st.session_state.celebrated = False 
         flag_for_save()
         st.rerun()
 
 st.divider()
 
-# --- قسم الإحصائيات والرسم البياني ---
+# --- قسم الإحصائيات ونظام الشعلة ---
 if st.session_state.todos:
     completed_count = sum(1 for task in st.session_state.todos if task['completed'])
     pending_count = len(st.session_state.todos) - completed_count
     total_count = len(st.session_state.todos)
     
     progress = completed_count / total_count if total_count > 0 else 0
+
+    # منطق نظام الشعلة (Streaks) والاحتفال
+    today_str = datetime.date.today().isoformat()
+    yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    
+    if progress == 1.0 and total_count > 0:
+        last_date = st.session_state.streak_data.get("last_date", "")
+        streak = st.session_state.streak_data.get("streak", 0)
+        
+        # إذا لم يتم احتساب الشعلة لليوم بعد
+        if last_date != today_str:
+            if last_date == yesterday_str:
+                streak += 1 # متابعة السلسلة
+            else:
+                streak = 1  # سلسلة جديدة
+                
+            st.session_state.streak_data["streak"] = streak
+            st.session_state.streak_data["last_date"] = today_str
+            flag_for_save()
+            
+        # إطلاق البالونات إذا لم نحتفل بعد
+        if not st.session_state.celebrated:
+            st.balloons()
+            st.session_state.celebrated = True
+    elif progress < 1.0:
+        # إذا ألغى تحديد مهمة، نتيح فرصة للاحتفال مرة أخرى عند الإكمال
+        st.session_state.celebrated = False
 
     df_pie = pd.DataFrame({
         "Status": ["Completed ✅", "Pending ⏳"],
@@ -243,7 +301,7 @@ if st.session_state.todos:
         st.button("🧹 Clear Completed Tasks", on_click=clear_completed)
 
 # ==========================================
-# 6. التنفيذ النهائي للحفظ (مرة واحدة فقط)
+# 6. التنفيذ النهائي للحفظ
 # ==========================================
 if st.session_state.get("needs_save", False):
     cookies.save()
