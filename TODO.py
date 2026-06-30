@@ -193,6 +193,32 @@ if "celebrated" not in st.session_state:
 def get_task_index(task_id):
     return next((i for i, t in enumerate(st.session_state.todos) if t['id'] == task_id), -1)
 
+# 🆕 دالة الإضافة الذكية المربوطة بالفورم مباشرة لحل مشكلة تكرار الإضافة والـ Lag
+def handle_add_task():
+    task_text = st.session_state.get("new_task_input", "").strip()
+    task_date_val = st.session_state.get("new_task_date", datetime.date.today())
+    
+    if task_text:
+        import time
+        st.session_state.todos.append({
+            "task": task_text, 
+            "completed": False, 
+            "progress": 0, 
+            "notes": "", 
+            "date": task_date_val.isoformat(),
+            "id": str(time.time())
+        })
+        try:
+            st.session_state.todos.sort(key=lambda x: x.get('date', ''))
+        except:
+            pass
+        st.session_state.celebrated = False 
+        
+        # حفظ فوري وحاسم للكوكيز والذاكرة قبل أي Rerun لضمان النزول من أول مرة 🔧
+        cookies["local_todos"] = json.dumps(st.session_state.todos)
+        cookies.save()
+        st.session_state.needs_save = False
+
 # ==========================================
 # 4. UI Sidebar Layout
 # ==========================================
@@ -218,34 +244,18 @@ with header_col2:
     if os.path.exists("Logo.png"): st.image("Logo.png", use_container_width=True)
 st.divider()
 
-# نموذج إضافة مهمة جديدة
+# 🆕 نموذج إضافة مهمة جديدة المطور بنظام الـ Callbacks لضمان الاستجابة الفورية 🔧
 with st.form("add_todo_form", clear_on_submit=True):
     col1, col2, col3 = st.columns([3, 1.2, 0.8])
     with col1: 
-        new_task = st.text_input("➕ Add a new task...", placeholder="Add your Task")
+        # تم ربط الحقل بمفتاح في الـ Session State
+        st.text_input("➕ Add a new task...", placeholder="Add your Task", key="new_task_input")
     with col2:
-        task_date = st.date_input("📅 Due Date", datetime.date.today())
+        st.date_input("📅 Due Date", datetime.date.today(), key="new_task_date")
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
-        submitted = st.form_submit_button("Add Task", use_container_width=True)
-        
-    if submitted and new_task.strip():
-        import time
-        st.session_state.todos.append({
-            "task": new_task.strip(), 
-            "completed": False, 
-            "progress": 0, 
-            "notes": "", 
-            "date": task_date.isoformat(),
-            "id": str(time.time())
-        })
-        try:
-            st.session_state.todos.sort(key=lambda x: x.get('date', ''))
-        except:
-            pass
-        st.session_state.celebrated = False 
-        st.session_state.needs_save = True
-        st.rerun()
+        # تم ربط الضغط بدالة المعالجة المباشرة on_click
+        st.form_submit_button("Add Task", use_container_width=True, on_click=handle_add_task)
 
 st.divider()
 
@@ -316,7 +326,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- قسم الفلترة وقائمة المهام ---
+# --- قسم الفلترة وقائمة المهام المنظمة ذات الـ 6 أعمدة ---
 if st.session_state.todos:
     filter_option = st.radio(
         "🔍 Filter Tasks by Date:", 
@@ -352,6 +362,7 @@ if st.session_state.todos:
     if not filtered_todos:
         st.info(f"No tasks found for: {filter_option}")
     else:
+        # عناوين الجدول
         st.markdown("<div class='table-header'>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
         with h_col1: st.markdown("Status")
@@ -369,6 +380,7 @@ if st.session_state.todos:
             chk_key = f"chk_{t_id}_{task.get('progress', 0)}"
             prog_key = f"prog_{t_id}_{task.get('completed', False)}"
             
+            # توزيع الأعمدة بشكل أنيق
             col_check, col_text, col_notes, col_date, col_exp, col_del = st.columns([0.4, 2.5, 2.5, 1.3, 1.5, 0.5])
             
             with col_check:
